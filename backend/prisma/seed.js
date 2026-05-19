@@ -7,10 +7,10 @@ async function main() {
   console.log('Iniciando seed de GESTARLEX...');
 
   // SuperAdmin
-  const superAdminHash = await bcrypt.hash('SuperAdmin2024!', 10);
+  const superAdminHash = await bcrypt.hash('GestarSoft2026!', 10);
   const superAdmin = await prisma.superAdmin.upsert({
     where: { email: 'admin@gestarsoft.com' },
-    update: {},
+    update: { passwordHash: superAdminHash },
     create: {
       nombre: 'Super Admin',
       email: 'admin@gestarsoft.com',
