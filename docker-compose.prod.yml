@@ -1,0 +1,73 @@
+version: '3.9'
+
+# Para levantar: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+# Primera vez con SSL: ejecutar ./init-ssl.sh antes de levantar
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gestarlex_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - gestarlex_pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gestarlex_backend
+    restart: unless-stopped
+    env_file: .env.production
+    volumes:
+      - gestarlex_uploads:/app/uploads
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gestarlex_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    networks:
+      - internal
+    depends_on:
+      - backend
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gestarlex_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    # Renueva automáticamente cada 12 horas
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done;'"
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  gestarlex_pgdata:
+  gestarlex_uploads:

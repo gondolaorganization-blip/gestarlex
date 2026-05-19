@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
+}

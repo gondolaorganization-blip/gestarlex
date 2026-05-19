@@ -1,0 +1,573 @@
+// GESTARLEX — Schema Prisma
+// Gestión de firmas de abogados en Panamá
+// Marco legal: Ley 402 de 2023, Acuerdo 49 de 2001 del Órgano Judicial
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum PlanFirma {
+  SOLO       // 1 abogado, 50 casos — B/.49/mes (intro)
+  FIRMA      // 5 abogados, ilimitado — B/.99/mes (intro)
+  ENTERPRISE // ilimitado, multi-oficina — B/.199/mes (intro)
+}
+
+enum RolAbogado {
+  SOCIO
+  ASOCIADO
+  PASANTE
+  ADMIN      // administrador del sistema, sin rol jurídico
+}
+
+enum TipoCliente {
+  PERSONA_NATURAL
+  JURIDICA
+}
+
+enum TipoCaso {
+  CIVIL
+  PENAL
+  LABORAL
+  COMERCIAL
+  ADMINISTRATIVO
+  FAMILIAR
+  MARITIMO   // Tribunal Marítimo de Panamá
+  OTRO
+}
+
+enum EstadoCaso {
+  ACTIVO
+  SUSPENDIDO
+  CERRADO
+  ARCHIVADO
+}
+
+enum EstadoAudiencia {
+  PENDIENTE
+  REALIZADA
+  SUSPENDIDA
+  CANCELADA
+}
+
+enum EstadoTermino {
+  PENDIENTE
+  COMPLETADO
+  VENCIDO
+}
+
+enum PrioridadTermino {
+  ALTA
+  MEDIA
+  BAJA
+}
+
+enum EstadoTarea {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADA
+}
+
+enum PrioridadTarea {
+  ALTA
+  MEDIA
+  BAJA
+}
+
+enum TipoHonorario {
+  HORA         // por hora trabajada — ref. Acuerdo 49/2001
+  FIJO         // monto fijo por caso
+  CONTINGENCIA // porcentaje del éxito
+  MIXTO        // combinación
+}
+
+enum EstadoFactura {
+  BORRADOR
+  ENVIADA
+  PAGADA
+  VENCIDA
+  ANULADA
+}
+
+enum TipoPoder {
+  GENERAL    // poder general — Código Civil de Panamá
+  ESPECIAL   // poder especial para acto determinado
+  JUDICIAL   // poder especial para representación judicial
+}
+
+enum EstadoTimer {
+  CORRIENDO
+  PAUSADO
+}
+
+enum EstadoSuscripcion {
+  TRIAL
+  ACTIVO
+  SUSPENDIDO
+  VENCIDO
+}
+
+enum TipoComunicacion {
+  EMAIL
+  LLAMADA
+  REUNION
+  WHATSAPP
+  CARTA
+}
+
+enum TipoGasto {
+  TASA_JUDICIAL  // tasas y timbres judiciales panameños
+  NOTARIA        // gastos notariales
+  TRANSPORTE
+  REGISTRO       // Registro Público de Panamá
+  OTRO
+}
+
+// ─── MODELOS ──────────────────────────────────────────────────────────────────
+
+// Refresh tokens almacenados en DB para invalidación segura
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  abogadoId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  abogado Abogado @relation(fields: [abogadoId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Firma {
+  id                   String             @id @default(cuid())
+  nombre               String
+  ruc                  String             @unique
+  direccion            String?
+  telefono             String?
+  email                String             @unique
+  logo                 String?
+  especialidades       String[]
+  plan                 PlanFirma          @default(SOLO)
+  activa               Boolean            @default(true)
+  // ── Suscripción ──────────────────────────────────────────────────────────
+  suscripcionEstado    EstadoSuscripcion  @default(TRIAL)
+  trialEndsAt          DateTime?          // null = sin período de prueba activo
+  suscripcionVenceEn   DateTime?          // fin del período de pago actual
+  accessManual         Boolean            @default(false) // acceso otorgado manualmente por super admin
+  paypalSubscriptionId String?            @unique
+  // ── Uso IA ───────────────────────────────────────────────────────────────
+  aiConsultasMes       Int                @default(0)
+  aiConsultasResetEn   DateTime?          // cuándo se resetea el contador (primer día del mes)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  abogados            Abogado[]
+  clientes            Cliente[]
+  casos               Caso[]
+  facturas            Factura[]
+  suscripcionEventos  SuscripcionEvento[]
+  emailLogs           EmailLog[]
+
+  @@map("firmas")
+}
+
+// Abogado — usuario del sistema con número de idoneidad de la CSJ
+model Abogado {
+  id              String     @id @default(cuid())
+  firmaId         String
+  nombre          String
+  numeroIdoneidad String     @unique // otorgado por la Corte Suprema de Justicia
+  especialidad    String?
+  email           String     @unique
+  telefono        String?
+  rol             RolAbogado @default(ASOCIADO)
+  activo          Boolean    @default(true)
+  passwordHash    String?
+  avatarUrl       String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  firma             Firma           @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  casosResponsable  Caso[]          @relation("AbogadoPrincipal")
+  casosAsignados    CasoAbogado[]
+  tareas            Tarea[]
+  registrosHoras    RegistroHoras[]
+  comunicaciones    Comunicacion[]
+  documentosSubidos Documento[]
+  refreshTokens     RefreshToken[]
+  timers            Timer[]
+
+  @@map("abogados")
+}
+
+// Cliente — persona natural o jurídica representada por la firma
+model Cliente {
+  id        String      @id @default(cuid())
+  firmaId   String
+  nombre    String
+  cedula    String?     // cédula de identidad (persona natural)
+  ruc       String?     // Registro Único de Contribuyente (persona jurídica)
+  email     String?
+  telefono  String?
+  tipo      TipoCliente @default(PERSONA_NATURAL)
+  origen    String?     // referido, web, llamada, etc.
+  activo    Boolean     @default(true)
+  notas     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  firma          Firma          @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  casos          Caso[]
+  poderes        Poder[]
+  comunicaciones Comunicacion[]
+  facturas       Factura[]
+
+  @@map("clientes")
+}
+
+// Caso — expediente judicial o consultoría
+model Caso {
+  id            String     @id @default(cuid())
+  firmaId       String
+  clienteId     String
+  abogadoId     String     // abogado responsable principal
+  numero        String     // número de expediente judicial (SNEL)
+  titulo        String
+  tipo          TipoCaso   @default(CIVIL)
+  juzgado       String?    // juzgado panameño asignado
+  juez          String?
+  contraparte   String?
+  estado        EstadoCaso @default(ACTIVO)
+  fechaApertura DateTime   @default(now())
+  fechaCierre   DateTime?
+  descripcion   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  firma           Firma            @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  cliente         Cliente          @relation(fields: [clienteId], references: [id])
+  abogado         Abogado          @relation("AbogadoPrincipal", fields: [abogadoId], references: [id])
+  abogados        CasoAbogado[]
+  audiencias      Audiencia[]
+  terminos        TerminoProcesal[]
+  documentos      Documento[]
+  tareas          Tarea[]
+  honorarioConfig HonorarioConfig?
+  registrosHoras  RegistroHoras[]
+  facturas        Factura[]
+  poderes         Poder[]
+  comunicaciones  Comunicacion[]
+  gastos          Gasto[]
+  historial       CasoHistorial[]
+  timers          Timer[]
+  emailLogs       EmailLog[]
+
+  @@unique([firmaId, numero])
+  @@map("casos")
+}
+
+// Tabla intermedia — múltiples abogados por caso (co-defensores, equipo)
+model CasoAbogado {
+  id        String   @id @default(cuid())
+  casoId    String
+  abogadoId String
+  rol       String?  // "co-defensor", "apoyo", "supervisión"
+  createdAt DateTime @default(now())
+
+  caso    Caso    @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  abogado Abogado @relation(fields: [abogadoId], references: [id])
+
+  @@unique([casoId, abogadoId])
+  @@map("casos_abogados")
+}
+
+// Historial de cambios de estado del caso
+model CasoHistorial {
+  id            String      @id @default(cuid())
+  casoId        String
+  estadoAntes   EstadoCaso?
+  estadoDespues EstadoCaso
+  nota          String?
+  fecha         DateTime    @default(now())
+  abogadoId     String?     // quien realizó el cambio
+
+  caso Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  @@map("casos_historial")
+}
+
+// Audiencia — actos procesales orales (Ley 402 de 2023)
+model Audiencia {
+  id        String          @id @default(cuid())
+  casoId    String
+  titulo    String
+  fecha     DateTime
+  hora      String?         // "09:00" — hora de la audiencia
+  juzgado   String?
+  sala      String?         // sala del juzgado
+  tipo      String?         // "inicial", "pruebas", "alegatos", "sentencia", "conciliación"
+  resultado String?
+  notas     String?
+  estado    EstadoAudiencia @default(PENDIENTE)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  caso Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  @@map("audiencias")
+}
+
+// Término Procesal — plazos según Ley 402 de 2023 y CPC panameño
+model TerminoProcesal {
+  id           String           @id @default(cuid())
+  casoId       String
+  descripcion  String
+  fechaVence   DateTime
+  diasAlerta   Int              @default(3) // alertar N días antes
+  estado       EstadoTermino    @default(PENDIENTE)
+  prioridad    PrioridadTermino @default(MEDIA)
+  completadoEn DateTime?
+  notas        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  caso Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  @@map("terminos_procesales")
+}
+
+// Documento — archivos del expediente
+model Documento {
+  id           String   @id @default(cuid())
+  casoId       String
+  nombre       String
+  tipo         String?  // "demanda", "contestación", "resolución", "sentencia", "poder", "otro"
+  archivo      String   // path o URL del archivo
+  mimeType     String?
+  tamanoBytes  Int?
+  version      Int      @default(1)
+  fechaSubida  DateTime @default(now())
+  subidoPorId  String?
+  confidencial Boolean  @default(false)
+  descripcion  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  caso      Caso     @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  subidoPor Abogado? @relation(fields: [subidoPorId], references: [id])
+
+  @@map("documentos")
+}
+
+// Tarea — trabajo pendiente asignado a un abogado
+model Tarea {
+  id           String         @id @default(cuid())
+  casoId       String
+  abogadoId    String
+  descripcion  String
+  fechaLimite  DateTime?
+  estado       EstadoTarea    @default(PENDIENTE)
+  prioridad    PrioridadTarea @default(MEDIA)
+  completadaEn DateTime?
+  notas        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  caso    Caso    @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  abogado Abogado @relation(fields: [abogadoId], references: [id])
+
+  @@map("tareas")
+}
+
+// Configuración de honorarios — ref. Acuerdo 49 de 2001 del Órgano Judicial
+model HonorarioConfig {
+  id               String        @id @default(cuid())
+  casoId           String        @unique
+  tipo             TipoHonorario @default(HORA)
+  tarifaHora       Decimal?      @db.Decimal(10, 2)
+  montoFijo        Decimal?      @db.Decimal(10, 2)
+  porcentajeExito  Decimal?      @db.Decimal(5, 2) // ej: 15.00 = 15%
+  descripcion      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  caso Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  @@map("honorarios_config")
+}
+
+// Registro de horas — control de tiempo facturable por abogado
+model RegistroHoras {
+  id          String   @id @default(cuid())
+  casoId      String
+  abogadoId   String
+  fecha       DateTime @default(now())
+  horas       Decimal  @db.Decimal(5, 2) // ej: 1.5 horas
+  descripcion String
+  facturable  Boolean  @default(true)
+  facturaId   String?  // referencia si ya fue facturado
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  caso    Caso    @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  abogado Abogado @relation(fields: [abogadoId], references: [id])
+
+  @@map("registros_horas")
+}
+
+// Factura — cobro de honorarios al cliente
+model Factura {
+  id        String        @id @default(cuid())
+  firmaId   String
+  clienteId String
+  casoId    String?
+  numero    String        // número correlativo de factura
+  monto     Decimal       @db.Decimal(10, 2)
+  estado    EstadoFactura @default(BORRADOR)
+  fecha     DateTime      @default(now())
+  vence     DateTime?
+  notas     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  firma   Firma   @relation(fields: [firmaId], references: [id])
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+  caso    Caso?   @relation(fields: [casoId], references: [id])
+
+  @@unique([firmaId, numero])
+  @@map("facturas")
+}
+
+// Poder — poder general o especial según Código Civil de Panamá
+// Datos notariales: notaría, tomo y folio del Registro Público
+model Poder {
+  id               String    @id @default(cuid())
+  clienteId        String
+  casoId           String?
+  tipo             TipoPoder @default(ESPECIAL)
+  fechaOtorgamiento DateTime
+  fechaVence       DateTime? // null = indefinido
+  notaria          String?   // nombre de la notaría panameña
+  tomo             String?   // tomo del Registro Público
+  folio            String?   // folio del Registro Público
+  activo           Boolean   @default(true)
+  descripcion      String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+  caso    Caso?   @relation(fields: [casoId], references: [id])
+
+  @@map("poderes")
+}
+
+// Comunicación — registro de todas las interacciones con el cliente
+model Comunicacion {
+  id          String           @id @default(cuid())
+  casoId      String?
+  clienteId   String
+  abogadoId   String
+  tipo        TipoComunicacion @default(EMAIL)
+  descripcion String
+  fecha       DateTime         @default(now())
+  notas       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  caso    Caso?   @relation(fields: [casoId], references: [id])
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+  abogado Abogado @relation(fields: [abogadoId], references: [id])
+
+  @@map("comunicaciones")
+}
+
+// Timer — cronómetro por caso, persistente entre reinicios del servidor
+model Timer {
+  id                  String      @id @default(cuid())
+  casoId              String
+  abogadoId           String
+  descripcion         String?
+  iniciadoEn          DateTime    @default(now())
+  pausadoEn           DateTime?
+  duracionAcumulada   Int         @default(0) // segundos acumulados en pausas previas
+  estado              EstadoTimer @default(CORRIENDO)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  caso    Caso    @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  abogado Abogado @relation(fields: [abogadoId], references: [id])
+
+  @@unique([casoId, abogadoId]) // un timer activo por caso+abogado
+  @@map("timers")
+}
+
+// SuperAdmin — administrador global del SaaS (separado de los abogados/firmas)
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("super_admins")
+}
+
+// SuscripcionEvento — log de cambios de estado de suscripción por firma
+model SuscripcionEvento {
+  id        String   @id @default(cuid())
+  firmaId   String
+  evento    String   // "TRIAL_INICIADO", "PAGO_RECIBIDO", "ACCESO_MANUAL", "SUSPENDIDA", "REACTIVADA"
+  detalle   Json?    // datos adicionales del webhook o acción manual
+  creadoPor String?  // "paypal_webhook" | "super_admin:<id>" | "sistema"
+  createdAt DateTime @default(now())
+
+  firma Firma @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+
+  @@map("suscripcion_eventos")
+}
+
+// Gasto — costos del caso (tasas judiciales, notariales, etc.)
+model Gasto {
+  id           String    @id @default(cuid())
+  casoId       String
+  descripcion  String
+  monto        Decimal   @db.Decimal(10, 2)
+  tipo         TipoGasto @default(OTRO)
+  fecha        DateTime  @default(now())
+  reembolsable Boolean   @default(false)
+  reembolsado  Boolean   @default(false)
+  comprobante  String?   // path de imagen o PDF del comprobante
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  caso Caso @relation(fields: [casoId], references: [id], onDelete: Cascade)
+
+  @@map("gastos")
+}
+
+// Registro de emails automáticos enviados por el sistema
+model EmailLog {
+  id           String    @id @default(cuid())
+  firmaId      String
+  casoId       String?
+  tipo         String    // TAREA_COMPLETADA | NUEVA_AUDIENCIA | NUEVO_TERMINO | FACTURA_ENVIADA | RECORDATORIO_AUDIENCIA | ALERTA_TERMINO
+  asunto       String
+  destinatario String
+  enviado      Boolean   @default(false)
+  fechaEnvio   DateTime?
+  error        String?
+  createdAt    DateTime  @default(now())
+
+  firma  Firma  @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  caso   Caso?  @relation(fields: [casoId], references: [id], onDelete: SetNull)
+
+  @@map("email_logs")
+}
