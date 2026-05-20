@@ -6,6 +6,7 @@ import * as auth from '../controllers/auth.controller.js';
 const router = Router();
 
 // Públicas
+router.post('/registro', asyncHandler(auth.registro));
 router.post('/login', asyncHandler(auth.login));
 router.post('/refresh', asyncHandler(auth.refresh));
 router.post('/logout', asyncHandler(auth.logout));

@@ -17,6 +17,22 @@ const cambiarPasswordSchema = z.object({
     .regex(/[0-9]/, 'Debe contener al menos un número.'),
 });
 
+export const registro = async (req, res) => {
+  const { nombreFirma, ruc, emailFirma, nombreAbogado, numeroIdoneidad, email, password } = req.body;
+  if (!nombreFirma || !ruc || !nombreAbogado || !email || !password) {
+    throw new ValidationError('nombreFirma, ruc, nombreAbogado, email y password son requeridos.');
+  }
+  if (!numeroIdoneidad) {
+    throw new ValidationError('El número de idoneidad del abogado es requerido.');
+  }
+  if (password.length < 6) {
+    throw new ValidationError('La contraseña debe tener al menos 6 caracteres.');
+  }
+
+  const datos = await authService.registro({ nombreFirma, ruc, emailFirma: emailFirma || email, nombreAbogado, numeroIdoneidad, email, password });
+  created(res, datos);
+};
+
 export const login = async (req, res) => {
   const result = loginSchema.safeParse(req.body);
   if (!result.success) {

@@ -21,6 +21,64 @@ const generarAccessToken = (abogado) =>
 
 const generarRefreshToken = () => crypto.randomBytes(64).toString('hex');
 
+export const registro = async ({ nombreFirma, ruc, emailFirma, nombreAbogado, numeroIdoneidad, email, password }) => {
+  const emailLow = email.toLowerCase().trim();
+  const emailFirmaLow = emailFirma ? emailFirma.toLowerCase().trim() : emailLow;
+
+  const [firmaExiste, abogadoExiste, idoneiadExiste] = await Promise.all([
+    prisma.firma.findUnique({ where: { ruc } }),
+    prisma.abogado.findUnique({ where: { email: emailLow } }),
+    prisma.abogado.findUnique({ where: { numeroIdoneidad } }),
+  ]);
+
+  if (firmaExiste) throw Object.assign(new Error('Ya existe una firma registrada con ese RUC.'), { status: 409 });
+  if (abogadoExiste) throw Object.assign(new Error('Ya existe un usuario registrado con ese email.'), { status: 409 });
+  if (idoneiadExiste) throw Object.assign(new Error('El número de idoneidad ya está registrado.'), { status: 409 });
+
+  const trialEndsAt = new Date();
+  trialEndsAt.setDate(trialEndsAt.getDate() + 14);
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const { firma, abogado } = await prisma.$transaction(async (tx) => {
+    const firma = await tx.firma.create({
+      data: {
+        nombre: nombreFirma.trim(),
+        ruc: ruc.trim(),
+        email: emailFirmaLow,
+        suscripcionEstado: 'TRIAL',
+        trialEndsAt,
+        especialidades: [],
+      },
+    });
+
+    const abogado = await tx.abogado.create({
+      data: {
+        firmaId: firma.id,
+        nombre: nombreAbogado.trim(),
+        numeroIdoneidad: numeroIdoneidad.trim(),
+        email: emailLow,
+        passwordHash,
+        rol: 'ADMIN',
+      },
+    });
+
+    return { firma, abogado };
+  });
+
+  const accessToken = generarAccessToken(abogado);
+  const refreshTokenRaw = generarRefreshToken();
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + REFRESH_DAYS);
+
+  await prisma.refreshToken.create({
+    data: { token: refreshTokenRaw, abogadoId: abogado.id, expiresAt },
+  });
+
+  const { passwordHash: _, ...abogadoSafe } = abogado;
+  return { accessToken, refreshToken: refreshTokenRaw, abogado: { ...abogadoSafe, firma: { id: firma.id, nombre: firma.nombre, plan: firma.plan } } };
+};
+
 export const login = async (email, password) => {
   const abogado = await prisma.abogado.findUnique({
     where: { email },

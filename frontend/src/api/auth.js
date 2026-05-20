@@ -1,5 +1,8 @@
 import api from './client';
 
+export const registro = (datos) =>
+  api.post('/auth/registro', datos).then((r) => r.data.data);
+
 export const login = (email, password) =>
   api.post('/auth/login', { email, password }).then((r) => r.data.data);
 
