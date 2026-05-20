@@ -41,6 +41,25 @@ async function main() {
 
   console.log('Firma creada:', firma.nombre);
 
+  // Abogado admin principal (GestarSoft)
+  const adminHash = await bcrypt.hash('GestarSoft2026!', 10);
+  await prisma.abogado.upsert({
+    where: { email: 'admin@gestarsoft.com' },
+    update: { passwordHash: adminHash },
+    create: {
+      firmaId: firma.id,
+      nombre: 'Administrador GestarSoft',
+      numeroIdoneidad: '00000-A',
+      especialidad: 'Administración',
+      email: 'admin@gestarsoft.com',
+      telefono: '+507 6000-0000',
+      rol: 'SOCIO',
+      activo: true,
+      passwordHash: adminHash,
+    },
+  });
+  console.log('Abogado admin creado: admin@gestarsoft.com');
+
   const passwordHash = await bcrypt.hash('Gestarlex2024!', 10);
 
   // Abogados
