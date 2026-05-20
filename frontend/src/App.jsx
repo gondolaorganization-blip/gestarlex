@@ -48,7 +48,6 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route element={<AppLayout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/casos" element={<CasosPage />} />
               <Route path="/casos/nuevo" element={<NuevoCasoPage />} />
@@ -70,7 +69,7 @@ export default function App() {
               <Route path="/asistente" element={<AsistentePage />} />
             </Route>
             <Route path="/suscripcion" element={<SuscripcionPage />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
             {/* Panel super admin — token independiente, sin AppLayout */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin" element={<AdminFirmasPage />} />
