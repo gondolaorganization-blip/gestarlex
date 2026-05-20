@@ -76,11 +76,10 @@ const TESTIMONIALS = [
 
 const FAQS = [
   { q: "¿Está adaptado al sistema judicial de Panamá?", a: "Sí. Gestar Lex está diseñado para la estructura judicial panameña: circuitos judiciales, tipos de procesos del COGEP y el Código Procesal Civil, plazos hábiles panameños y terminología local." },
-  { q: "¿Puedo migrar mis casos desde otro sistema?", a: "Sí. Ofrecemos importación de datos desde Excel, CSV y otros formatos. En el plan Despacho el proceso es asistido por nuestro equipo sin costo adicional." },
   { q: "¿Los documentos generados tienen validez legal?", a: "Los documentos se generan como borradores en DOCX/PDF. La firma electrónica con validez legal requiere notarización conforme a la Ley 51 de 2008 de Panamá." },
   { q: "¿Cuántos usuarios puedo agregar?", a: "El plan Solo incluye 1 usuario. Firma hasta 5 abogados. Despacho es ilimitado. También puedes dar acceso de solo lectura a asistentes." },
   { q: "¿Hay período de prueba?", a: "Sí. 14 días de prueba gratuita con acceso completo. Sin tarjeta de crédito. Al finalizar, elige tu plan o escríbenos." },
-  { q: "¿Mis expedientes están seguros?", a: "Almacenamiento en la nube con encriptación AES-256, backups diarios y acceso con 2FA. Cumplimos con la Ley 81 de Protección de Datos de Panamá." },
+  { q: "¿Mis expedientes están seguros?", a: "Sí. Los datos se almacenan en infraestructura en la nube con encriptación AES-256 en reposo y backups diarios automáticos. La conexión siempre va por HTTPS cifrado." },
 ];
 
 export default function GestarLexLanding() {
@@ -164,16 +163,25 @@ export default function GestarLexLanding() {
         padding: "16px 48px", display: "flex", alignItems: "center", justifyContent: "space-between",
         transition: "all 0.25s ease",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: "linear-gradient(135deg, #1E3A5F 0%, #C9A84C 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, fontWeight: 900, color: "#fff",
-          }}>G</div>
-          <span style={{ fontSize: 18, fontWeight: 800, color: scrolled ? "#1E3A5F" : "#fff", letterSpacing: "-0.02em" }}>
-            Gestar <span style={{ color: "#C9A84C" }}>Lex</span>
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <a href="https://gestarsoft.com" style={{
+            fontSize: 12, fontWeight: 600, color: scrolled ? "#6B7280" : "rgba(255,255,255,0.5)",
+            textDecoration: "none", transition: "color 0.15s",
+          }}
+            onMouseEnter={e => e.target.style.color = "#C9A84C"}
+            onMouseLeave={e => e.target.style.color = scrolled ? "#6B7280" : "rgba(255,255,255,0.5)"}
+          >← GestarSoft</a>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: "linear-gradient(135deg, #1E3A5F 0%, #C9A84C 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, fontWeight: 900, color: "#fff",
+            }}>G</div>
+            <span style={{ fontSize: 18, fontWeight: 800, color: scrolled ? "#1E3A5F" : "#fff", letterSpacing: "-0.02em" }}>
+              Gestar <span style={{ color: "#C9A84C" }}>Lex</span>
+            </span>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
           {["Funciones", "Precios", "FAQ"].map(item => (
@@ -340,7 +348,7 @@ export default function GestarLexLanding() {
                 </div>
                 <div style={{ fontSize: 11, color: "#C9A84C", fontWeight: 700, marginBottom: 10, textAlign: "center" }}>✓ 14 días gratis · Sin tarjeta</div>
                 <button
-                  onClick={() => navigate("/login")}
+                  onClick={() => navigate("/registro")}
                   style={{
                     width: "100%", marginBottom: 20, padding: "12px", fontSize: 13, fontWeight: 700,
                     borderRadius: 10, border: plan.popular ? "none" : "1px solid rgba(255,255,255,0.15)",
@@ -350,6 +358,7 @@ export default function GestarLexLanding() {
                     transition: "all 0.15s",
                   }}
                 >Comenzar prueba gratis</button>
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                   {plan.features.map(f => (
                     <div key={f} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -366,6 +375,19 @@ export default function GestarLexLanding() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div style={{ textAlign: "center", marginTop: 40 }}>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 14, letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>Métodos de pago</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 }}>
+              {[{ label: "🅿️ PayPal", note: "Principal" }, { label: "📱 Yappy", note: "Contáctenos" }, { label: "🏦 ACH Panamá", note: "Contáctenos" }].map(m => (
+                <div key={m.label} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 16px", fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 500, textAlign: "center" }}>
+                  <div>{m.label}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>{m.note}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.2)" }}>El pago se configura dentro de la plataforma vía PayPal al finalizar el registro.</p>
           </div>
         </div>
       </section>
@@ -436,10 +458,12 @@ export default function GestarLexLanding() {
           <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>Gestar Lex · GestarSoft</span>
         </div>
         <div style={{ display: "flex", gap: 24 }}>
-          <a href="mailto:soporte@gestarsoft.com" style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>Soporte</a>
-          <a href="https://gestarsoft.com" style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>GestarSoft.com</a>
+          <a href="https://gestarsoft.com" style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>Términos</a>
+          <a href="https://gestarsoft.com" style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>Privacidad</a>
+          <a href="https://wa.me/50765143637" target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>Soporte</a>
+          <a href="https://www.linkedin.com/company/gestarsoft" target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textDecoration: "none" }}>LinkedIn</a>
         </div>
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2026 GestarSoft · Panamá</span>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)" }}>© 2026 GestarSoft · Ciudad de Panamá, República de Panamá</span>
       </footer>
     </div>
   );
