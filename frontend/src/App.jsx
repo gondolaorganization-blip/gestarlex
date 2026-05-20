@@ -24,6 +24,7 @@ import PlantillasPage from './pages/plantillas/PlantillasPage';
 import PerfilPage from './pages/perfil/PerfilPage';
 import AsistentePage from './pages/asistente/AsistentePage';
 import PlaceholderPage from './pages/PlaceholderPage';
+import LandingPage from './pages/LandingPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminFirmasPage from './pages/admin/AdminFirmasPage';
 import SuscripcionPage from './pages/suscripcion/SuscripcionPage';
@@ -44,6 +45,7 @@ export default function App() {
         <AuthProvider>
           <Toaster position="top-right" />
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route element={<AppLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
