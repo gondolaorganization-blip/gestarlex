@@ -30,8 +30,15 @@ import paypalRoutes from './routes/paypal.routes.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://lex.gestarsoft.com',
+  'https://gestarlex.onrender.com',
+  'http://localhost:5173',
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, cb) => cb(null, !origin || allowedOrigins.includes(origin)),
   credentials: true,
 }));
 app.use(express.json({
