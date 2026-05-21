@@ -12,4 +12,4 @@ RUN mkdir -p uploads
 EXPOSE 3099
 
 # Corre migraciones pendientes y luego levanta el servidor
-CMD ["sh", "-c", "npx prisma migrate deploy && node src/index.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node src/index.js"]
