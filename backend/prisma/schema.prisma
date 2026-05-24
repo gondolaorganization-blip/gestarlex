@@ -14,7 +14,7 @@ datasource db {
 // ─── ENUMS ────────────────────────────────────────────────────────────────────
 
 enum PlanFirma {
-  SOLO       // 1 abogado, 50 casos — B/.49/mes (intro)
+  SOLO       // 1 abogado, 50 casos — B/.39.99/mes (intro)
   FIRMA      // 5 abogados, ilimitado — B/.99/mes (intro)
   ENTERPRISE // ilimitado, multi-oficina — B/.199/mes (intro)
 }

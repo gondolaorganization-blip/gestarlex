@@ -16,9 +16,6 @@ backend/uploads/
 # Build del frontend
 frontend/dist/
 
-# Prisma
-backend/prisma/migrations/
-
 # Logs
 *.log
 npm-debug.log*

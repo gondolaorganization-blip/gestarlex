@@ -4,7 +4,7 @@ import { NotFoundError } from '../utils/errors.js';
 
 // Mapeo plan interno → plan PayPal
 const PLANES = {
-  SOLO:       { nombre: 'SOLO',       precio: 49,  abogados: 1,         label: 'Solo' },
+  SOLO:       { nombre: 'SOLO',       precio: 39.99, abogados: 1,       label: 'Solo' },
   FIRMA:      { nombre: 'FIRMA',      precio: 99,  abogados: 5,         label: 'Firma' },
   ENTERPRISE: { nombre: 'ENTERPRISE', precio: 199, abogados: Infinity,  label: 'Enterprise' },
 };
