@@ -181,9 +181,17 @@ export default function FacturaDetallePage() {
                 <td className="pt-1 text-right pr-6 text-xs text-gray-400">ITBMS (0%)</td>
                 <td className="pt-1 text-right text-xs text-gray-400">B/. 0.00</td>
               </tr>
-              <tr className="bg-indigo-600 rounded-lg">
+              <tr className={`rounded-lg ${
+                factura.estado === 'PAGADA'  ? 'bg-green-600' :
+                factura.estado === 'ANULADA' ? 'bg-gray-400'  :
+                factura.estado === 'VENCIDA' ? 'bg-red-600'   : 'bg-indigo-600'
+              }`}>
                 <td className="pt-3 pb-3 pl-4 rounded-l-xl">
-                  <span className="text-sm font-bold text-white">TOTAL A PAGAR</span>
+                  <span className="text-sm font-bold text-white">
+                    {factura.estado === 'PAGADA'  ? 'PAGADA' :
+                     factura.estado === 'ANULADA' ? 'ANULADA' :
+                     factura.estado === 'VENCIDA' ? 'VENCIDA — TOTAL A PAGAR' : 'TOTAL A PAGAR'}
+                  </span>
                 </td>
                 <td className="pt-3 pb-3 pr-4 text-right rounded-r-xl">
                   <span className="text-lg font-bold text-white">{fmtMonto(factura.monto)}</span>
@@ -198,9 +206,6 @@ export default function FacturaDetallePage() {
           <p className="text-xs text-gray-500 text-center">
             Esta factura fue emitida por {firma.nombre ?? 'la firma'} conforme a las leyes de la República de Panamá.
           </p>
-          {factura.estado === 'PAGADA' && (
-            <p className="text-center mt-2 text-sm font-bold text-green-600">CANCELADA</p>
-          )}
         </div>
       </div>
 
