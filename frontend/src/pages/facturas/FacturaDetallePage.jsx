@@ -229,8 +229,20 @@ export default function FacturaDetallePage() {
           </table>
         </div>
 
+        {/* Firma */}
+        <div className="px-10 pt-8 pb-6">
+          <div className="flex justify-end">
+            <div className="text-center w-56">
+              <div className="border-t border-gray-400 pt-2">
+                <p className="text-sm font-semibold text-gray-800">José Manuel Góndola Escudero</p>
+                <p className="text-xs text-gray-500">Cédula 8-822-1560</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Pie de página */}
-        <div className="px-10 py-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl print:rounded-none">
+        <div className="px-10 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl print:rounded-none">
           <p className="text-xs text-gray-500 text-center">
             Esta factura fue emitida por {firma.nombre ?? 'la firma'} conforme a las leyes de la República de Panamá.
           </p>
