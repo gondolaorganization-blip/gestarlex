@@ -123,6 +123,20 @@ export default function FacturaDetallePage() {
             {cliente.ruc && <p className="text-sm text-gray-500">RUC: {cliente.ruc}</p>}
             {cliente.cedula && <p className="text-sm text-gray-500">Cédula: {cliente.cedula}</p>}
             {cliente.email && <p className="text-sm text-gray-500">{cliente.email}</p>}
+
+            {/* Co-destinatarios */}
+            {Array.isArray(factura.destinatariosAdicionales) && factura.destinatariosAdicionales.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+                {factura.destinatariosAdicionales.map((d, i) => (
+                  <div key={i}>
+                    <p className="font-semibold text-gray-900 text-sm">{d.nombre}</p>
+                    {d.documento && (
+                      <p className="text-sm text-gray-500">{d.tipoDoc || 'Documento'}: {d.documento}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

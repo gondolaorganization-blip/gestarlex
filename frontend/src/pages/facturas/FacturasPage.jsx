@@ -5,7 +5,7 @@ import { getFacturas, getAging, crearFactura, cambiarEstadoFactura } from '../..
 import { getClientes } from '../../api/clientes';
 import { getCasos } from '../../api/casos';
 import { format, parseISO } from 'date-fns';
-import { Receipt, Plus, X, ChevronDown, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Receipt, Plus, X, ChevronDown, AlertTriangle, ExternalLink, UserPlus, Trash2 } from 'lucide-react';
 import Spinner from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
 
@@ -337,6 +337,8 @@ export default function FacturasPage() {
 
 function NuevaFacturaModal({ onClose, onSuccess }) {
   const [form, setForm] = useState({ clienteId: '', casoId: '', monto: '', vence: '', notas: '' });
+  const [destinatarios, setDestinatarios] = useState([]);
+  const [nuevoDestinatario, setNuevoDestinatario] = useState({ nombre: '', documento: '', tipoDoc: 'Cédula' });
 
   const { data: clientesResp } = useQuery({
     queryKey: ['clientes-select'],
@@ -368,6 +370,7 @@ function NuevaFacturaModal({ onClose, onSuccess }) {
     if (form.casoId) payload.casoId = form.casoId;
     if (form.vence) payload.vence = form.vence;
     if (form.notas) payload.notas = form.notas;
+    if (destinatarios.length) payload.destinatariosAdicionales = destinatarios;
     mutation.mutate(payload);
   };
 
@@ -416,6 +419,75 @@ function NuevaFacturaModal({ onClose, onSuccess }) {
               placeholder="Descripción de los servicios, desglose de honorarios..."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
           </div>
+          {/* Co-destinatarios */}
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" /> Co-destinatarios (opcional)
+            </p>
+
+            {destinatarios.length > 0 && (
+              <div className="space-y-1.5">
+                {destinatarios.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                    <span className="font-medium text-gray-800">{d.nombre}</span>
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <span>{d.tipoDoc}: {d.documento}</span>
+                      <button type="button" onClick={() => setDestinatarios((prev) => prev.filter((_, j) => j !== i))}>
+                        <Trash2 className="w-3.5 h-3.5 text-red-400 hover:text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-end">
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  value={nuevoDestinatario.nombre}
+                  onChange={(e) => setNuevoDestinatario((p) => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Nombre completo"
+                  className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">N.º documento</label>
+                <input
+                  type="text"
+                  value={nuevoDestinatario.documento}
+                  onChange={(e) => setNuevoDestinatario((p) => ({ ...p, documento: e.target.value }))}
+                  placeholder="8-123-4567"
+                  className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">Tipo</label>
+                <select
+                  value={nuevoDestinatario.tipoDoc}
+                  onChange={(e) => setNuevoDestinatario((p) => ({ ...p, tipoDoc: e.target.value }))}
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option>Cédula</option>
+                  <option>Pasaporte</option>
+                  <option>RUC</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!nuevoDestinatario.nombre.trim()) return;
+                  setDestinatarios((prev) => [...prev, { ...nuevoDestinatario }]);
+                  setNuevoDestinatario({ nombre: '', documento: '', tipoDoc: 'Cédula' });
+                }}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 whitespace-nowrap"
+              >
+                + Agregar
+              </button>
+            </div>
+          </div>
+
           <div className="flex gap-2 pt-1">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
             <button type="submit" disabled={mutation.isPending} className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">

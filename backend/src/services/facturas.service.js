@@ -169,6 +169,9 @@ export const crear = async (datos, firmaId, user) => {
       fecha: new Date(),
       vence: datos.vence ? new Date(datos.vence) : null,
       notas: datos.notas || null,
+      destinatariosAdicionales: datos.destinatariosAdicionales?.length
+        ? datos.destinatariosAdicionales
+        : undefined,
     },
     include: {
       cliente: { select: { id: true, nombre: true } },

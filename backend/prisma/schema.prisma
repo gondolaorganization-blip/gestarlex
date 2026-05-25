@@ -436,6 +436,8 @@ model Factura {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
+  destinatariosAdicionales Json?     // [{nombre, documento, tipoDoc}] — co-destinatarios opcionales
+
   firma   Firma   @relation(fields: [firmaId], references: [id])
   cliente Cliente @relation(fields: [clienteId], references: [id])
   caso    Caso?   @relation(fields: [casoId], references: [id])
