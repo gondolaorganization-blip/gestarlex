@@ -16,6 +16,7 @@ router.get('/aging', asyncHandler(ctrl.agingReport));
 router.get('/', asyncHandler(ctrl.listar));
 router.get('/:id', asyncHandler(ctrl.obtener));
 router.post('/', minRol('ASOCIADO'), asyncHandler(ctrl.crear));
+router.put('/:id', minRol('ASOCIADO'), asyncHandler(ctrl.actualizar));
 router.patch('/:id/estado', minRol('ASOCIADO'), asyncHandler(ctrl.cambiarEstado));
 
 // Generación automática desde caso

@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getFactura } from '../../api/facturas';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getFactura, actualizarFactura } from '../../api/facturas';
 import Spinner from '../../components/ui/Spinner';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Pencil, X, Trash2, UserPlus } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const fmtMonto = (n) =>
   'B/. ' + Number(n).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -20,6 +22,8 @@ const ESTADO_META = {
 export default function FacturaDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data: factura, isLoading, isError } = useQuery({
     queryKey: ['factura', id],
@@ -64,13 +68,22 @@ export default function FacturaDetallePage() {
           <ArrowLeft className="w-4 h-4" />
           Volver a facturas
         </button>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <Printer className="w-4 h-4" />
-          Imprimir / Guardar PDF
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowEdit(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+            Editar
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <Printer className="w-4 h-4" />
+            Imprimir / Guardar PDF
+          </button>
+        </div>
       </div>
 
       {/* Documento de factura */}
@@ -223,8 +236,164 @@ export default function FacturaDetallePage() {
         </div>
       </div>
 
+      {showEdit && (
+        <EditarFacturaModal
+          factura={factura}
+          onClose={() => setShowEdit(false)}
+          onSaved={(updated) => {
+            qc.setQueryData(['factura', id], updated);
+            setShowEdit(false);
+            toast.success('Factura actualizada');
+          }}
+        />
+      )}
+
       {/* Margen inferior para impresión */}
       <div className="h-8 print:hidden" />
+    </div>
+  );
+}
+
+function EditarFacturaModal({ factura, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    monto: String(factura.monto),
+    vence: factura.vence ? factura.vence.slice(0, 10) : '',
+    notas: factura.notas || '',
+  });
+  const [destinatarios, setDestinatarios] = useState(
+    Array.isArray(factura.destinatariosAdicionales) ? factura.destinatariosAdicionales : []
+  );
+  const [nuevoDestinatario, setNuevoDestinatario] = useState({ nombre: '', documento: '', tipoDoc: 'Cédula' });
+
+  const mutation = useMutation({
+    mutationFn: (data) => actualizarFactura(factura.id, data),
+    onSuccess: onSaved,
+    onError: (err) => toast.error(err.response?.data?.message || 'Error al guardar'),
+  });
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    mutation.mutate({
+      monto: parseFloat(form.monto),
+      vence: form.vence || null,
+      notas: form.notas || null,
+      destinatariosAdicionales: destinatarios.length ? destinatarios : null,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 print:hidden">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Editar factura {factura.numero}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Monto (B/.) <span className="text-red-500">*</span></label>
+              <input
+                required type="number" min="0" step="0.01"
+                value={form.monto} onChange={(e) => set('monto', e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de vencimiento</label>
+              <input
+                type="date" value={form.vence} onChange={(e) => set('vence', e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Notas / Desglose</label>
+            <textarea
+              rows={4} value={form.notas} onChange={(e) => set('notas', e.target.value)}
+              placeholder="Descripción de los servicios..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            />
+          </div>
+
+          {/* Co-destinatarios */}
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" /> Co-destinatarios
+            </p>
+            {destinatarios.length > 0 && (
+              <div className="space-y-1.5">
+                {destinatarios.map((d, i) => (
+                  <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                    <span className="font-medium text-gray-800">{d.nombre}</span>
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <span>{d.tipoDoc}: {d.documento}</span>
+                      <button type="button" onClick={() => setDestinatarios((p) => p.filter((_, j) => j !== i))}>
+                        <Trash2 className="w-3.5 h-3.5 text-red-400 hover:text-red-600" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-end">
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">Nombre</label>
+                <input type="text" value={nuevoDestinatario.nombre}
+                  onChange={(e) => setNuevoDestinatario((p) => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Nombre completo"
+                  className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">N.º documento</label>
+                <input type="text" value={nuevoDestinatario.documento}
+                  onChange={(e) => setNuevoDestinatario((p) => ({ ...p, documento: e.target.value }))}
+                  placeholder="8-123-4567"
+                  className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-gray-400 mb-1">Tipo</label>
+                <select value={nuevoDestinatario.tipoDoc}
+                  onChange={(e) => setNuevoDestinatario((p) => ({ ...p, tipoDoc: e.target.value }))}
+                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option>Cédula</option>
+                  <option>Pasaporte</option>
+                  <option>RUC</option>
+                </select>
+              </div>
+              <button type="button"
+                onClick={() => {
+                  if (!nuevoDestinatario.nombre.trim()) return;
+                  setDestinatarios((p) => [...p, { ...nuevoDestinatario }]);
+                  setNuevoDestinatario({ nombre: '', documento: '', tipoDoc: 'Cédula' });
+                }}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 whitespace-nowrap"
+              >
+                + Agregar
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 py-2.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={mutation.isPending}
+              className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              {mutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

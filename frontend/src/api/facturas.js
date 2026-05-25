@@ -12,6 +12,9 @@ export const getAging = () =>
 export const crearFactura = (data) =>
   api.post('/facturas', data).then((r) => r.data.data);
 
+export const actualizarFactura = (id, data) =>
+  api.put(`/facturas/${id}`, data).then((r) => r.data.data);
+
 export const cambiarEstadoFactura = (id, estado) =>
   api.patch(`/facturas/${id}/estado`, { estado }).then((r) => r.data.data);
 

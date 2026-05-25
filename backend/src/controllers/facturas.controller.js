@@ -11,6 +11,17 @@ const crearSchema = z.object({
   notas: z.string().optional(),
 });
 
+const actualizarSchema = z.object({
+  monto: z.number().positive().optional(),
+  vence: z.string().nullable().optional(),
+  notas: z.string().nullable().optional(),
+  destinatariosAdicionales: z.array(z.object({
+    nombre: z.string(),
+    documento: z.string().optional(),
+    tipoDoc: z.string().optional(),
+  })).nullable().optional(),
+});
+
 const estadoSchema = z.object({
   estado: z.enum(['ENVIADA', 'PAGADA', 'VENCIDA', 'ANULADA']),
 });
@@ -37,6 +48,15 @@ export const crear = async (req, res) => {
 export const generarDesdeCaso = async (req, res) => {
   const data = await svc.generarDesdeCaso(req.params.casoId, req.body, req.user.firmaId, req.user);
   created(res, data);
+};
+
+export const actualizar = async (req, res) => {
+  const result = actualizarSchema.safeParse(req.body);
+  if (!result.success) {
+    throw new ValidationError('Datos inválidos.', result.error.flatten().fieldErrors);
+  }
+  const data = await svc.actualizar(req.params.id, result.data, req.user.firmaId, req.user);
+  ok(res, data);
 };
 
 export const cambiarEstado = async (req, res) => {

@@ -253,6 +253,36 @@ export const generarDesdeCaso = async (casoId, extras, firmaId, user) => {
   return { factura, desglose: { honorarios: monto, gastos: totalGastos, ajuste: extras?.ajuste || 0, total: montoTotal } };
 };
 
+// ─── ACTUALIZAR ──────────────────────────────────────────────────────────────
+
+export const actualizar = async (id, datos, firmaId, user) => {
+  if (user.rol === 'PASANTE') throw new ForbiddenError('Los pasantes no pueden editar facturas.');
+
+  const factura = await prisma.factura.findFirst({ where: { id, firmaId } });
+  if (!factura) throw new NotFoundError('Factura no encontrada.');
+
+  const cambios = {};
+  if (datos.monto !== undefined) cambios.monto = datos.monto;
+  if (datos.vence !== undefined) cambios.vence = datos.vence ? new Date(datos.vence) : null;
+  if (datos.notas !== undefined) cambios.notas = datos.notas || null;
+  if (datos.destinatariosAdicionales !== undefined)
+    cambios.destinatariosAdicionales = datos.destinatariosAdicionales?.length
+      ? datos.destinatariosAdicionales
+      : null;
+
+  if (Object.keys(cambios).length === 0) throw new ValidationError('No se enviaron cambios.');
+
+  return prisma.factura.update({
+    where: { id },
+    data: cambios,
+    include: {
+      cliente: { select: { id: true, nombre: true, cedula: true, ruc: true, email: true } },
+      caso: { select: { id: true, numero: true, titulo: true } },
+      firma: { select: { nombre: true, ruc: true, telefono: true, email: true, direccion: true } },
+    },
+  });
+};
+
 // ─── CAMBIAR ESTADO ───────────────────────────────────────────────────────────
 
 export const cambiarEstado = async (id, nuevoEstado, firmaId, user) => {
