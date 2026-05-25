@@ -262,6 +262,11 @@ export const actualizar = async (id, datos, firmaId, user) => {
   if (!factura) throw new NotFoundError('Factura no encontrada.');
 
   const cambios = {};
+  if (datos.clienteId !== undefined) {
+    const cliente = await prisma.cliente.findFirst({ where: { id: datos.clienteId, firmaId } });
+    if (!cliente) throw new NotFoundError('Cliente no encontrado.');
+    cambios.clienteId = datos.clienteId;
+  }
   if (datos.monto !== undefined) cambios.monto = datos.monto;
   if (datos.vence !== undefined) cambios.vence = datos.vence ? new Date(datos.vence) : null;
   if (datos.notas !== undefined) cambios.notas = datos.notas || null;

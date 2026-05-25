@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFactura, actualizarFactura } from '../../api/facturas';
+import { getClientes } from '../../api/clientes';
 import Spinner from '../../components/ui/Spinner';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -256,10 +257,17 @@ export default function FacturaDetallePage() {
 
 function EditarFacturaModal({ factura, onClose, onSaved }) {
   const [form, setForm] = useState({
+    clienteId: factura.cliente?.id || '',
     monto: String(factura.monto),
     vence: factura.vence ? factura.vence.slice(0, 10) : '',
     notas: factura.notas || '',
   });
+
+  const { data: clientesResp } = useQuery({
+    queryKey: ['clientes-select'],
+    queryFn: () => getClientes({ porPagina: 200 }),
+  });
+  const clientes = clientesResp?.datos ?? [];
   const [destinatarios, setDestinatarios] = useState(
     Array.isArray(factura.destinatariosAdicionales) ? factura.destinatariosAdicionales : []
   );
@@ -276,6 +284,7 @@ function EditarFacturaModal({ factura, onClose, onSaved }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     mutation.mutate({
+      clienteId: form.clienteId,
       monto: parseFloat(form.monto),
       vence: form.vence || null,
       notas: form.notas || null,
@@ -294,6 +303,19 @@ function EditarFacturaModal({ factura, onClose, onSaved }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cliente <span className="text-red-500">*</span></label>
+            <select
+              required value={form.clienteId} onChange={(e) => set('clienteId', e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Seleccionar cliente...</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Monto (B/.) <span className="text-red-500">*</span></label>

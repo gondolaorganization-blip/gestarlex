@@ -12,6 +12,7 @@ const crearSchema = z.object({
 });
 
 const actualizarSchema = z.object({
+  clienteId: z.string().optional(),
   monto: z.number().positive().optional(),
   vence: z.string().nullable().optional(),
   notas: z.string().nullable().optional(),
