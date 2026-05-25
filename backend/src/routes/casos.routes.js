@@ -22,6 +22,8 @@ router.put('/:id', minRol('ASOCIADO'), asyncHandler(ctrl.actualizar));
 router.patch('/:id/estado', minRol('ASOCIADO'), asyncHandler(ctrl.cambiarEstado));
 router.post('/:id/abogados', minRol('SOCIO'), asyncHandler(ctrl.asignarAbogado));
 router.delete('/:id/abogados/:abogadoId', minRol('SOCIO'), asyncHandler(ctrl.removerAbogado));
+router.post('/:id/clientes', minRol('SOCIO'), asyncHandler(ctrl.agregarCliente));
+router.delete('/:id/clientes/:clienteId', minRol('SOCIO'), asyncHandler(ctrl.removerCliente));
 
 // Timeline y estadísticas
 router.get('/:id/timeline', asyncHandler(ctrl.timeline));

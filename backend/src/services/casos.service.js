@@ -19,6 +19,13 @@ const selectCasoBase = {
   createdAt: true,
   updatedAt: true,
   cliente: { select: { id: true, nombre: true, tipo: true, cedula: true, ruc: true } },
+  clientesAdicionales: {
+    select: {
+      rol: true,
+      cliente: { select: { id: true, nombre: true, tipo: true, cedula: true, ruc: true } },
+    },
+    orderBy: { createdAt: 'asc' },
+  },
   abogado: { select: { id: true, nombre: true, rol: true, numeroIdoneidad: true } },
   abogados: {
     select: {
@@ -307,6 +314,43 @@ export const cambiarEstado = async (id, nuevoEstado, nota, user) => {
 };
 
 // ─── ASIGNAR ABOGADO ──────────────────────────────────────────────────────────
+
+export const agregarCliente = async (casoId, clienteId, rol, user) => {
+  const caso = await prisma.caso.findUnique({ where: { id: casoId } });
+  if (!caso) throw new NotFoundError('Caso no encontrado.');
+  verificarAcceso(caso, user);
+
+  if (!['ADMIN', 'SOCIO'].includes(user.rol)) {
+    throw new ForbiddenError('Solo socios o administradores pueden agregar clientes al caso.');
+  }
+  if (caso.clienteId === clienteId) {
+    throw new ValidationError('Este cliente ya es el cliente principal del caso.');
+  }
+
+  const cliente = await prisma.cliente.findFirst({ where: { id: clienteId, firmaId: caso.firmaId } });
+  if (!cliente) throw new NotFoundError('Cliente no encontrado en esta firma.');
+
+  return prisma.casoCliente.upsert({
+    where: { casoId_clienteId: { casoId, clienteId } },
+    create: { casoId, clienteId, rol: rol || null },
+    update: { rol: rol || null },
+    include: { cliente: { select: { id: true, nombre: true, tipo: true, cedula: true, ruc: true } } },
+  });
+};
+
+export const removerCliente = async (casoId, clienteId, user) => {
+  const caso = await prisma.caso.findUnique({ where: { id: casoId } });
+  if (!caso) throw new NotFoundError('Caso no encontrado.');
+  verificarAcceso(caso, user);
+
+  if (!['ADMIN', 'SOCIO'].includes(user.rol)) {
+    throw new ForbiddenError('Solo socios o administradores pueden remover clientes del caso.');
+  }
+
+  await prisma.casoCliente.delete({
+    where: { casoId_clienteId: { casoId, clienteId } },
+  });
+};
 
 export const asignarAbogado = async (casoId, abogadoId, rol, user) => {
   const caso = await prisma.caso.findUnique({ where: { id: casoId } });

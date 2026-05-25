@@ -23,3 +23,9 @@ export const actualizarCaso = (id, data) =>
 
 export const cambiarEstado = (id, estado, nota) =>
   api.patch(`/casos/${id}/estado`, { estado, nota }).then((r) => r.data.data);
+
+export const agregarClienteCaso = (casoId, clienteId, rol) =>
+  api.post(`/casos/${casoId}/clientes`, { clienteId, rol }).then((r) => r.data.data);
+
+export const removerClienteCaso = (casoId, clienteId) =>
+  api.delete(`/casos/${casoId}/clientes/${clienteId}`).then((r) => r.data.data);

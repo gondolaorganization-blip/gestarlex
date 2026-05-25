@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getCaso, getTimeline, getEstadisticas } from '../../api/casos';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getCaso, getTimeline, getEstadisticas, agregarClienteCaso, removerClienteCaso } from '../../api/casos';
+import { getClientes } from '../../api/clientes';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import TabTimeline from './tabs/TabTimeline';
@@ -17,7 +18,9 @@ import {
   ArrowLeft, Clock, AlertTriangle, CheckSquare,
   FileText, DollarSign, User, Building2, Gavel,
   MapPin, Scale, Receipt, MessageSquare, Sparkles,
+  UserPlus, X,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -58,7 +61,9 @@ function StatCard({ label, value, sub, icon: Icon, color = 'gray' }) {
 export default function CasoDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [tab, setTab] = useState('timeline');
+  const [showAgregarCliente, setShowAgregarCliente] = useState(false);
 
   const { data: caso, isLoading, error } = useQuery({
     queryKey: ['caso', id],
@@ -75,6 +80,18 @@ export default function CasoDetailPage() {
     queryKey: ['caso-timeline', id],
     queryFn: () => getTimeline(id),
     enabled: tab === 'timeline' && !!id,
+  });
+
+  const mutAgregarCliente = useMutation({
+    mutationFn: ({ clienteId, rol }) => agregarClienteCaso(id, clienteId, rol),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['caso', id] }); toast.success('Cliente agregado'); },
+    onError: (err) => toast.error(err.response?.data?.message || 'Error'),
+  });
+
+  const mutRemoverCliente = useMutation({
+    mutationFn: (clienteId) => removerClienteCaso(id, clienteId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['caso', id] }); toast.success('Cliente removido'); },
+    onError: (err) => toast.error(err.response?.data?.message || 'Error'),
   });
 
   if (isLoading) {
@@ -141,11 +158,38 @@ export default function CasoDetailPage() {
 
           {/* Meta info */}
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-            <div className="flex items-center gap-2 text-gray-600">
-              {caso.cliente?.tipo === 'JURIDICA'
-                ? <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
-                : <User className="w-4 h-4 text-gray-400 shrink-0" />}
-              <span className="truncate">{caso.cliente?.nombre}</span>
+            {/* Clientes */}
+            <div className="flex flex-col gap-1 col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 text-gray-600">
+                {caso.cliente?.tipo === 'JURIDICA'
+                  ? <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+                  : <User className="w-4 h-4 text-gray-400 shrink-0" />}
+                <Link to={`/clientes/${caso.cliente?.id}`} className="truncate hover:text-indigo-600 transition-colors">
+                  {caso.cliente?.nombre}
+                </Link>
+              </div>
+              {caso.clientesAdicionales?.map((ca) => (
+                <div key={ca.cliente.id} className="flex items-center gap-2 text-gray-500 pl-6">
+                  <span className="truncate text-xs">{ca.cliente.nombre}</span>
+                  {ca.rol && <span className="text-[10px] text-gray-400 shrink-0">· {ca.rol}</span>}
+                  {['ADMIN', 'SOCIO'].includes(caso.abogado?.rol) && (
+                    <button
+                      onClick={() => mutRemoverCliente.mutate(ca.cliente.id)}
+                      className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {['ADMIN', 'SOCIO'].includes(caso.abogado?.rol) && (
+                <button
+                  onClick={() => setShowAgregarCliente(true)}
+                  className="flex items-center gap-1 pl-6 text-xs text-indigo-500 hover:text-indigo-700 transition-colors w-fit"
+                >
+                  <UserPlus className="w-3 h-3" /> Agregar cliente
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Scale className="w-4 h-4 text-gray-400 shrink-0" />
@@ -231,6 +275,19 @@ export default function CasoDetailPage() {
         </div>
       </div>
 
+      {showAgregarCliente && (
+        <AgregarClienteModal
+          casoId={id}
+          firmaId={caso.firmaId}
+          clientesPrevios={[caso.clienteId, ...(caso.clientesAdicionales?.map((ca) => ca.cliente.id) ?? [])]}
+          onClose={() => setShowAgregarCliente(false)}
+          onAgregar={(clienteId, rol) => {
+            mutAgregarCliente.mutate({ clienteId, rol });
+            setShowAgregarCliente(false);
+          }}
+        />
+      )}
+
       {/* ── Contenido del tab ─────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-6 py-6">
         {tab === 'timeline'   && <TabTimeline   casoId={id} timeline={timeline} />}
@@ -242,6 +299,69 @@ export default function CasoDetailPage() {
         {tab === 'comunicaciones' && <TabComunicaciones  casoId={id} clienteId={caso.cliente?.id} />}
         {tab === 'honorarios'     && <TabHonorarios      casoId={id} />}
         {tab === 'asistente'      && <TabAsistente       casoId={id} caso={caso} />}
+      </div>
+    </div>
+  );
+}
+
+function AgregarClienteModal({ casoId, firmaId, clientesPrevios, onClose, onAgregar }) {
+  const [clienteId, setClienteId] = useState('');
+  const [rol, setRol] = useState('');
+
+  const { data: clientesResp } = useQuery({
+    queryKey: ['clientes-select', firmaId],
+    queryFn: () => getClientes({ porPagina: 200 }),
+  });
+
+  const disponibles = (clientesResp?.datos ?? []).filter((c) => !clientesPrevios.includes(c.id));
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">Agregar cliente al caso</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cliente <span className="text-red-500">*</span></label>
+            <select
+              value={clienteId}
+              onChange={(e) => setClienteId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">Seleccionar cliente...</option>
+              {disponibles.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Rol en el caso (opcional)</label>
+            <input
+              type="text"
+              value={rol}
+              onChange={(e) => setRol(e.target.value)}
+              placeholder="ej. co-demandante, garante, representado..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!clienteId}
+              onClick={() => onAgregar(clienteId, rol || null)}
+              className="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Agregar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

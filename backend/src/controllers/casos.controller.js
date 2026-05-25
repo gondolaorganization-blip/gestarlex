@@ -82,6 +82,18 @@ export const removerAbogado = async (req, res) => {
   ok(res, { message: 'Abogado removido del caso.' });
 };
 
+export const agregarCliente = async (req, res) => {
+  const { clienteId, rol } = req.body;
+  if (!clienteId) throw new ValidationError('clienteId requerido.');
+  const data = await svc.agregarCliente(req.params.id, clienteId, rol, req.user);
+  ok(res, data);
+};
+
+export const removerCliente = async (req, res) => {
+  await svc.removerCliente(req.params.id, req.params.clienteId, req.user);
+  ok(res, { message: 'Cliente removido del caso.' });
+};
+
 export const timeline = async (req, res) => {
   const data = await svc.timeline(req.params.id, req.user);
   ok(res, data);

@@ -223,7 +223,8 @@ model Cliente {
   updatedAt DateTime    @updatedAt
 
   firma          Firma          @relation(fields: [firmaId], references: [id], onDelete: Cascade)
-  casos          Caso[]
+  casos          Caso[]         @relation("ClientePrincipal")
+  casosAdicionales CasoCliente[]
   poderes        Poder[]
   comunicaciones Comunicacion[]
   facturas       Factura[]
@@ -250,10 +251,11 @@ model Caso {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  firma           Firma            @relation(fields: [firmaId], references: [id], onDelete: Cascade)
-  cliente         Cliente          @relation(fields: [clienteId], references: [id])
-  abogado         Abogado          @relation("AbogadoPrincipal", fields: [abogadoId], references: [id])
-  abogados        CasoAbogado[]
+  firma               Firma            @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  cliente             Cliente          @relation("ClientePrincipal", fields: [clienteId], references: [id])
+  clientesAdicionales CasoCliente[]
+  abogado             Abogado          @relation("AbogadoPrincipal", fields: [abogadoId], references: [id])
+  abogados            CasoAbogado[]
   audiencias      Audiencia[]
   terminos        TerminoProcesal[]
   documentos      Documento[]
@@ -270,6 +272,21 @@ model Caso {
 
   @@unique([firmaId, numero])
   @@map("casos")
+}
+
+// Tabla intermedia — múltiples clientes por caso (co-demandantes, co-demandados, garantes)
+model CasoCliente {
+  id        String   @id @default(cuid())
+  casoId    String
+  clienteId String
+  rol       String?  // "co-demandante", "co-demandado", "garante", etc.
+  createdAt DateTime @default(now())
+
+  caso    Caso    @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+
+  @@unique([casoId, clienteId])
+  @@map("casos_clientes")
 }
 
 // Tabla intermedia — múltiples abogados por caso (co-defensores, equipo)
