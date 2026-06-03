@@ -8,6 +8,7 @@ import RegistroPage from './pages/auth/RegistroPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import CasosPage from './pages/casos/CasosPage';
 import CasoDetailPage from './pages/casos/CasoDetailPage';
+import TareasPage from './pages/tareas/TareasPage';
 import ClientesPage from './pages/clientes/ClientesPage';
 import ClienteDetailPage from './pages/clientes/ClienteDetailPage';
 import NuevoClientePage from './pages/clientes/NuevoClientePage';
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="/casos" element={<CasosPage />} />
               <Route path="/casos/nuevo" element={<NuevoCasoPage />} />
               <Route path="/casos/:id" element={<CasoDetailPage />} />
+              <Route path="/tareas" element={<TareasPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/clientes/nuevo" element={<NuevoClientePage />} />
               <Route path="/clientes/:id" element={<ClienteDetailPage />} />

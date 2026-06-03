@@ -1,13 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Users, Calendar,
-  FileText, Scale, Clock, Receipt, LogOut, Briefcase, BarChart2, Calculator, ScrollText, Bot,
+  FileText, Scale, Clock, Receipt, LogOut, Briefcase, BarChart2, Calculator, ScrollText, Bot, ListChecks,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const nav = [
   { to: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard },
   { to: '/casos',      label: 'Casos',        icon: FolderOpen },
+  { to: '/tareas',     label: 'Tareas',       icon: ListChecks },
   { to: '/clientes',   label: 'Clientes',     icon: Users },
   { to: '/calendario', label: 'Calendario',   icon: Calendar },
   { to: '/documentos', label: 'Documentos',   icon: FileText },

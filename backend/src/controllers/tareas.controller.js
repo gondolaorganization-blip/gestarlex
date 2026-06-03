@@ -21,6 +21,14 @@ export const misTareas = async (req, res) => {
   ok(res, data);
 };
 
+export const todasPendientes = async (req, res) => {
+  const data = await svc.todasPendientes(req.user.firmaId, req.user, {
+    abogadoId: req.query.abogadoId || undefined,
+    prioridad: req.query.prioridad || undefined,
+  });
+  ok(res, data);
+};
+
 export const crear = async (req, res) => {
   const result = crearSchema.safeParse(req.body);
   if (!result.success) {
@@ -43,4 +51,14 @@ export const completar = async (req, res) => {
 export const eliminar = async (req, res) => {
   await svc.eliminar(req.params.id, req.user.firmaId, req.user);
   ok(res, { message: 'Tarea eliminada.' });
+};
+
+export const getNotas = async (req, res) => {
+  const data = await svc.getNotas(req.user);
+  ok(res, data);
+};
+
+export const guardarNotas = async (req, res) => {
+  const data = await svc.guardarNotas(req.user, req.body?.notas ?? '');
+  ok(res, data);
 };

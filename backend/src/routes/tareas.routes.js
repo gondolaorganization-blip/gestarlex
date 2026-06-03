@@ -9,6 +9,9 @@ const router = Router();
 router.use(authenticate, verificarAcceso);
 
 router.get('/mis-tareas', asyncHandler(ctrl.misTareas));
+router.get('/todas', asyncHandler(ctrl.todasPendientes));
+router.get('/notas', asyncHandler(ctrl.getNotas));
+router.put('/notas', asyncHandler(ctrl.guardarNotas));
 router.get('/caso/:casoId', asyncHandler(ctrl.listarPorCaso));
 router.post('/caso/:casoId', asyncHandler(ctrl.crear));
 router.put('/:id', asyncHandler(ctrl.actualizar));

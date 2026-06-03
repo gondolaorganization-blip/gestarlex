@@ -31,6 +31,42 @@ export const misTareas = async (firmaId, user) => {
   });
 };
 
+// Bandeja global: todas las tareas pendientes de la firma, con cliente y caso.
+// Un PASANTE solo ve las suyas; el resto del equipo ve las de toda la firma.
+export const todasPendientes = async (firmaId, user, filtros = {}) => {
+  const where = {
+    estado: { not: 'COMPLETADA' },
+    caso: { firmaId },
+  };
+
+  if (user.rol === 'PASANTE') {
+    where.abogadoId = user.sub;
+  } else if (filtros.abogadoId) {
+    where.abogadoId = filtros.abogadoId;
+  }
+
+  if (filtros.prioridad) where.prioridad = filtros.prioridad;
+
+  return prisma.tarea.findMany({
+    where,
+    include: {
+      abogado: { select: { id: true, nombre: true, rol: true } },
+      caso: {
+        select: {
+          id: true,
+          numero: true,
+          titulo: true,
+          cliente: { select: { id: true, nombre: true } },
+        },
+      },
+    },
+    orderBy: [
+      { fechaLimite: { sort: 'asc', nulls: 'last' } },
+      { prioridad: 'asc' },
+    ],
+  });
+};
+
 export const crear = async (casoId, datos, firmaId, user) => {
   const caso = await prisma.caso.findFirst({ where: { id: casoId, firmaId } });
   if (!caso) throw new NotFoundError('Caso no encontrado.');
@@ -64,10 +100,17 @@ export const actualizar = async (id, datos, firmaId, user) => {
     throw new ForbiddenError('Solo puedes editar tus propias tareas.');
   }
 
+  // Reasignar la tarea: validar que el abogado destino sea de la firma.
+  if (datos.abogadoId && datos.abogadoId !== tarea.abogadoId) {
+    const destino = await prisma.abogado.findFirst({ where: { id: datos.abogadoId, firmaId } });
+    if (!destino) throw new NotFoundError('Abogado no encontrado.');
+  }
+
   return prisma.tarea.update({
     where: { id },
     data: {
       ...(datos.descripcion && { descripcion: datos.descripcion }),
+      ...(datos.abogadoId && { abogadoId: datos.abogadoId }),
       ...(datos.fechaLimite !== undefined && {
         fechaLimite: datos.fechaLimite ? new Date(datos.fechaLimite) : null,
       }),
@@ -78,6 +121,23 @@ export const actualizar = async (id, datos, firmaId, user) => {
     },
     include: { abogado: { select: { id: true, nombre: true } } },
   });
+};
+
+// Bloc de notas personal del usuario en la bandeja de tareas.
+export const getNotas = async (user) => {
+  const abogado = await prisma.abogado.findUnique({
+    where: { id: user.sub },
+    select: { notasTareas: true },
+  });
+  return { notas: abogado?.notasTareas ?? '' };
+};
+
+export const guardarNotas = async (user, notas) => {
+  await prisma.abogado.update({
+    where: { id: user.sub },
+    data: { notasTareas: typeof notas === 'string' ? notas : '' },
+  });
+  return { notas: notas ?? '' };
 };
 
 export const completar = async (id, firmaId, user) => {

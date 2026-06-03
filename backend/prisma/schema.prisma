@@ -190,6 +190,7 @@ model Abogado {
   activo          Boolean    @default(true)
   passwordHash    String?
   avatarUrl       String?
+  notasTareas     String?    // bloc de notas personal de la bandeja de tareas
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
