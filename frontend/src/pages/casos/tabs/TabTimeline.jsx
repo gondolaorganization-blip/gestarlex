@@ -3,12 +3,13 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   FolderOpen, GitBranch, Gavel, Clock, File,
-  CheckSquare, MessageCircle, Timer,
+  CheckSquare, MessageCircle, Timer, Activity,
 } from 'lucide-react';
 
 const ICONOS = {
   CASO_CREADO:    { icon: FolderOpen,    bg: 'bg-indigo-100',  text: 'text-indigo-600' },
   ESTADO_CAMBIADO:{ icon: GitBranch,     bg: 'bg-purple-100',  text: 'text-purple-600' },
+  ACTIVIDAD:      { icon: Activity,      bg: 'bg-teal-100',    text: 'text-teal-600'   },
   AUDIENCIA:      { icon: Gavel,         bg: 'bg-blue-100',    text: 'text-blue-600'   },
   TERMINO:        { icon: Clock,         bg: 'bg-orange-100',  text: 'text-orange-600' },
   DOCUMENTO:      { icon: File,          bg: 'bg-gray-100',    text: 'text-gray-600'   },

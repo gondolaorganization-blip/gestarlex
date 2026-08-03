@@ -173,6 +173,7 @@ model Firma {
   facturas            Factura[]
   suscripcionEventos  SuscripcionEvento[]
   emailLogs           EmailLog[]
+  apiKeys             ApiKey[]
 
   @@map("firmas")
 }
@@ -203,6 +204,7 @@ model Abogado {
   documentosSubidos Documento[]
   refreshTokens     RefreshToken[]
   timers            Timer[]
+  apiKeys           ApiKey[]
 
   @@map("abogados")
 }
@@ -590,4 +592,28 @@ model EmailLog {
   caso   Caso?  @relation(fields: [casoId], references: [id], onDelete: SetNull)
 
   @@map("email_logs")
+}
+
+// ApiKey — credencial para automatizaciones externas (no reemplaza el login del abogado).
+// Solo otorga lectura y actualización; el router de integraciones no expone borrado.
+model ApiKey {
+  id          String    @id @default(cuid())
+  firmaId     String
+  abogadoId   String    // a quién se le atribuyen las escrituras hechas con esta key
+  nombre      String    // "laptop", "celular", etc. — para saber cuál revocar
+  prefijo     String    // primeros caracteres visibles, para identificarla sin exponerla
+  hash        String    @unique // SHA-256 de la key completa; el valor en claro no se guarda
+  scopes      String[]  @default(["casos:read"]) // casos:read | casos:write — nunca borrado
+  activa      Boolean   @default(true)
+  ultimoUsoEn DateTime?
+  expiraEn    DateTime?
+  revocadaEn  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  firma   Firma   @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  abogado Abogado @relation(fields: [abogadoId], references: [id], onDelete: Cascade)
+
+  @@index([firmaId])
+  @@map("api_keys")
 }

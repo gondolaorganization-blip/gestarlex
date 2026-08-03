@@ -469,17 +469,24 @@ export const timeline = async (casoId, user) => {
       icono: 'folder-open',
     },
 
-    // Cambios de estado
-    ...historial.map((h) => ({
-      tipo: 'ESTADO_CAMBIADO',
-      fecha: h.fecha,
-      titulo: h.estadoAntes
-        ? `Estado: ${h.estadoAntes} → ${h.estadoDespues}`
-        : `Estado inicial: ${h.estadoDespues}`,
-      descripcion: h.nota,
-      meta: { estadoAntes: h.estadoAntes, estadoDespues: h.estadoDespues },
-      icono: 'git-branch',
-    })),
+    // Cambios de estado — y actividad registrada sin cambio de estado, que comparte
+    // tabla pero llega con estadoAntes === estadoDespues. Se distingue solo al mostrar:
+    // el modelo no cambia.
+    ...historial.map((h) => {
+      const sinCambioDeEstado = h.estadoAntes && h.estadoAntes === h.estadoDespues;
+      return {
+        tipo: sinCambioDeEstado ? 'ACTIVIDAD' : 'ESTADO_CAMBIADO',
+        fecha: h.fecha,
+        titulo: sinCambioDeEstado
+          ? `Actividad registrada: ${h.nota}`
+          : h.estadoAntes
+            ? `Estado: ${h.estadoAntes} → ${h.estadoDespues}`
+            : `Estado inicial: ${h.estadoDespues}`,
+        descripcion: sinCambioDeEstado ? null : h.nota,
+        meta: { estadoAntes: h.estadoAntes, estadoDespues: h.estadoDespues },
+        icono: sinCambioDeEstado ? 'activity' : 'git-branch',
+      };
+    }),
 
     // Audiencias
     ...audiencias.map((a) => ({

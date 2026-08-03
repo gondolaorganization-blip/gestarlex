@@ -26,9 +26,15 @@ import reportesRoutes from './routes/reportes.routes.js';
 import iaRoutes from './routes/ia.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import paypalRoutes from './routes/paypal.routes.js';
+import integracionesRoutes from './routes/integraciones.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Detrás del proxy de Render (o nginx en el VPS): confía solo en el primer salto, de modo
+// que req.ip sea la IP real del cliente y no se pueda falsear vía X-Forwarded-For.
+// Necesario para que el rate limit por IP de /api/integraciones cuente bien.
+app.set('trust proxy', 1);
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -78,6 +84,7 @@ app.use('/api/reportes',       reportesRoutes);
 app.use('/api/ia',             iaRoutes);
 app.use('/api/admin',          adminRoutes);
 app.use('/api/paypal',         paypalRoutes);
+app.use('/api/integraciones',  integracionesRoutes);
 
 // 404
 app.use((_req, res) => res.status(404).json({ ok: false, message: 'Ruta no encontrada.' }));

@@ -11,5 +11,8 @@ RUN mkdir -p uploads
 
 EXPOSE 3099
 
-# Corre migraciones pendientes y luego levanta el servidor
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node src/index.js"]
+# Una sola definición del arranque de producción: el script start:prod del package.json
+# (prisma db push + node src/index.js). Antes esta línea corría `migrate deploy`, lo que
+# hacía que el contenedor se comportara distinto según por dónde se desplegara y podía
+# fallar en bases cuyo historial de migraciones no está completo.
+CMD ["npm", "run", "start:prod"]
