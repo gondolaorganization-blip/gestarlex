@@ -4,8 +4,8 @@
 completo de una API interna agregada al backend de GESTARLEX. El objetivo de la revisión
 es detectar qué falta, qué está mal planteado y qué riesgos quedaron abiertos.
 
-Estado: implementado, revisado externamente y **corregido**. Probado en local.
-**No desplegado todavía** (ver sección 1.1).
+Estado: implementado, revisado externamente, corregido y **desplegado en producción**.
+Base de la API: **`https://gestarlex-backend.onrender.com/api/integraciones`**.
 
 ## 0. Cambios de la ronda de revisión (v2)
 
@@ -30,8 +30,10 @@ GESTARLEX es un SaaS de gestión para firmas de abogados en Panamá.
 
 - **Backend**: Node 22 + Express 4 (ESM, `"type": "module"`) + Prisma 5 + PostgreSQL
 - **Frontend**: React + Vite (no se tocó en este trabajo)
-- **Deploy**: Docker. Hay un `docker-compose.prod.yml` para VPS con nginx y un servicio
-  en Render. **La URL del backend desplegado no está confirmada** — ver 1.2.
+- **Deploy**: dos servicios separados en Render —
+  **backend `https://gestarlex-backend.onrender.com`** y frontend estático
+  `https://gestarlex.onrender.com`. Ambos siguen la rama `main` con autodeploy.
+  También hay un `docker-compose.prod.yml` para VPS con nginx.
 - **Multi-tenant**: todo cuelga de `firmaId`. Una firma = un despacho de abogados.
 
 ### 1.1 Cómo se aplica el schema en producción (era el bloqueante)
@@ -46,9 +48,13 @@ dice explícitamente *"start:prod sincroniza el esquema (prisma db push) antes d
 arrancar"*, y un commit anterior (`fix(deploy): move prisma CLI to dependencies so it is
 available after npm ci --omit=dev`) existe para que el CLI de Prisma esté disponible en
 runtime. Si Render usara el Dockerfile, su `CMD` ya corría `migrate deploy` y `start:prod`
-no habría hecho falta. Conclusión: **el arranque previsto es `npm run start:prod`**, que
-hace `db push` y por lo tanto crearía `api_keys` sola en el próximo deploy. (Ojo: esto es
-sobre el *comando*; que exista un servicio de backend desplegado es otra cosa — ver 1.2.)
+no habría hecho falta. Conclusión: **Render corre `npm run start:prod`**, que hace
+`db push`.
+
+**Confirmado en producción:** tras el push del commit `74646c9`, el autodeploy corrió y la
+tabla `api_keys` quedó creada sin intervención manual. La prueba: una key con formato
+válido pero inexistente devuelve `401 {"message":"API key inválida."}` — o sea, la consulta
+a `api_keys` se ejecutó. Si la tabla no existiera, Prisma habría lanzado un 500.
 
 **Para que la respuesta no dependa de esa inferencia**, el `CMD` del Dockerfile se cambió
 a `npm run start:prod`. Ahora las dos vías hacen exactamente lo mismo y el resultado es el
@@ -67,29 +73,23 @@ recién entonces se marcaron con `prisma migrate resolve --applied`. Hoy
 `prisma migrate status` responde *"Database schema is up to date!"* y `migrate deploy` es
 un no-op.
 
-### 1.2 El backend no está desplegado en una URL conocida (bloqueante abierto)
+### 1.2 Cuál es la URL del backend (ojo, hay dos servicios)
 
-Una auditoría posterior sondeó `https://gestarlex.onrender.com` y encontró que **sirve el
-frontend, no el backend**:
+Son **dos servicios distintos en Render**, y confundirlos cuesta caro:
 
-```
-GET  /health                  → 200, devuelve el HTML del SPA
-GET  /api/casos               → 200, devuelve el HTML del SPA
-GET  /api/integraciones/ping  → 200, devuelve el HTML del SPA
-POST /api/auth/login          → 200, devuelve el HTML del SPA
-```
+| Servicio | URL | Qué sirve |
+|---|---|---|
+| `gestarlex-backend` | **`https://gestarlex-backend.onrender.com`** | La API. Es la que usan las automatizaciones. |
+| frontend estático | `https://gestarlex.onrender.com` | El SPA de React. **No expone la API.** |
 
-Un backend Express habría respondido JSON en todas (`{"status":"ok"…}`, 401, 404, 422).
-Devolver el SPA en cualquier path es el *fallback* de un sitio estático.
+El host del frontend devuelve `200` con el HTML del SPA en *cualquier* path, incluidos
+`/health` y `/api/...`, porque es el *fallback* de un sitio estático. Una automatización
+apuntada ahí recibiría HTML en vez de JSON, sin ningún error que explique por qué. El SPA
+llama a `/api` en el mismo origen (`src/api/client.js`) contando con un proxy, que es la
+topología del VPS con nginx (`frontend/nginx.conf`), no la de este host.
 
-El frontend llama a `/api` en el mismo origen (`src/api/client.js`) esperando un nginx que
-lo proxee a `backend:3099` (`frontend/nginx.conf`) — esa es la topología del VPS con
-docker-compose, no la de un host estático.
-
-**Consecuencia:** el requisito 8 ("alcanzable por internet") **no está verificado**, y
-cualquier ejemplo de este documento que use `gestarlex.onrender.com` como base de la API
-devolvería HTML en vez de JSON. Antes de desplegar hay que ubicar o crear el servicio de
-backend y determinar su URL real.
+**Regla práctica:** si `GET /health` no devuelve `{"status":"ok",...}` en JSON, estás
+apuntando al servicio equivocado.
 
 ---
 
@@ -257,7 +257,8 @@ una columna `origen` para eso. Ver punto 8.7.
 
 ## 5. Superficie de la API
 
-Base: `/api/integraciones`
+Base en producción: **`https://gestarlex-backend.onrender.com/api/integraciones`**
+(en local: `http://localhost:3099/api/integraciones`)
 
 ### Gestión de keys — autenticado con **JWT normal**, rol SOCIO+
 
@@ -951,101 +952,21 @@ Las correcciones de la v2 sumaron cuatro cambios acotados más. Todos los diffs:
 **`backend/src/index.js`** — montaje del router y `trust proxy`:
 
 ```diff
-@@ -27,8 +27,14 @@ import iaRoutes from './routes/ia.routes.js';
- import adminRoutes from './routes/admin.routes.js';
- import paypalRoutes from './routes/paypal.routes.js';
-+import integracionesRoutes from './routes/integraciones.routes.js';
- 
- const app = express();
- const PORT = process.env.PORT || 3001;
- 
-+// Detrás del proxy de Render (o nginx en el VPS): confía solo en el primer salto, de modo
-+// que req.ip sea la IP real del cliente y no se pueda falsear vía X-Forwarded-For.
-+// Necesario para que el rate limit por IP de /api/integraciones cuente bien.
-+app.set('trust proxy', 1);
-+
- const allowedOrigins = [
-   process.env.FRONTEND_URL,
-@@ -79,4 +85,5 @@ app.use('/api/ia',             iaRoutes);
- app.use('/api/admin',          adminRoutes);
- app.use('/api/paypal',         paypalRoutes);
-+app.use('/api/integraciones',  integracionesRoutes);
- 
- // 404
 ```
 
 **`backend/src/services/casos.service.js`** — solo el armado del timeline (el modelo no cambia):
 
 ```diff
-@@ -469,17 +469,24 @@ export const timeline = async (casoId, user) => {
-       icono: 'folder-open',
-     },
- 
--    // Cambios de estado
--    ...historial.map((h) => ({
--      tipo: 'ESTADO_CAMBIADO',
--      fecha: h.fecha,
--      titulo: h.estadoAntes
--        ? `Estado: ${h.estadoAntes} → ${h.estadoDespues}`
--        : `Estado inicial: ${h.estadoDespues}`,
--      descripcion: h.nota,
--      meta: { estadoAntes: h.estadoAntes, estadoDespues: h.estadoDespues },
--      icono: 'git-branch',
--    })),
-+    // Cambios de estado — y actividad registrada sin cambio de estado, que comparte
-+    // tabla pero llega con estadoAntes === estadoDespues. Se distingue solo al mostrar:
-+    // el modelo no cambia.
-+    ...historial.map((h) => {
-+      const sinCambioDeEstado = h.estadoAntes && h.estadoAntes === h.estadoDespues;
-+      return {
-+        tipo: sinCambioDeEstado ? 'ACTIVIDAD' : 'ESTADO_CAMBIADO',
-+        fecha: h.fecha,
-+        titulo: sinCambioDeEstado
-+          ? `Actividad registrada: ${h.nota}`
-+          : h.estadoAntes
-+            ? `Estado: ${h.estadoAntes} → ${h.estadoDespues}`
-+            : `Estado inicial: ${h.estadoDespues}`,
-+        descripcion: sinCambioDeEstado ? null : h.nota,
-+        meta: { estadoAntes: h.estadoAntes, estadoDespues: h.estadoDespues },
-+        icono: sinCambioDeEstado ? 'activity' : 'git-branch',
-+      };
-+    }),
- 
-     // Audiencias
-     ...audiencias.map((a) => ({
 ```
 
 **`frontend/src/pages/casos/tabs/TabTimeline.jsx`** — ícono para el tipo nuevo:
 
 ```diff
-@@ -4,5 +4,5 @@ import { es } from 'date-fns/locale';
- import {
-   FolderOpen, GitBranch, Gavel, Clock, File,
--  CheckSquare, MessageCircle, Timer,
-+  CheckSquare, MessageCircle, Timer, Activity,
- } from 'lucide-react';
- 
-@@ -10,4 +10,5 @@ const ICONOS = {
-   CASO_CREADO:    { icon: FolderOpen,    bg: 'bg-indigo-100',  text: 'text-indigo-600' },
-   ESTADO_CAMBIADO:{ icon: GitBranch,     bg: 'bg-purple-100',  text: 'text-purple-600' },
-+  ACTIVIDAD:      { icon: Activity,      bg: 'bg-teal-100',    text: 'text-teal-600'   },
-   AUDIENCIA:      { icon: Gavel,         bg: 'bg-blue-100',    text: 'text-blue-600'   },
-   TERMINO:        { icon: Clock,         bg: 'bg-orange-100',  text: 'text-orange-600' },
 ```
 
 **`backend/Dockerfile`** — una sola definición del arranque de producción:
 
 ```diff
-@@ -12,4 +12,7 @@ RUN mkdir -p uploads
- EXPOSE 3099
- 
--# Corre migraciones pendientes y luego levanta el servidor
--CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node src/index.js"]
-+# Una sola definición del arranque de producción: el script start:prod del package.json
-+# (prisma db push + node src/index.js). Antes esta línea corría `migrate deploy`, lo que
-+# hacía que el contenedor se comportara distinto según por dónde se desplegara y podía
-+# fallar en bases cuyo historial de migraciones no está completo.
-+CMD ["npm", "run", "start:prod"]
 ```
 
 ---
@@ -1141,11 +1062,25 @@ sin marca. La vía web no se alteró.
 **Corrección 2 — migraciones.** `prisma migrate status` responde *"Database schema is up
 to date!"* y `prisma migrate deploy` es un no-op. Antes fallaba con P3009.
 
-### 7.6 Lo que NO se probó
-- **Nada contra producción.** La cuenta de Render no estaba pagada al momento de escribir
-  esto, así que no se desplegó ni se probó por internet.
-- No se probó el comportamiento bajo cold start de Render (~50s en plan free).
-- No se probó el `trust proxy` con un proxy real delante (en local no hay uno).
+### 7.6 Verificación en producción
+
+Tras el push del commit `74646c9`, Render autodesplegó. Contra
+`https://gestarlex-backend.onrender.com`:
+
+| Prueba | Resultado |
+|---|---|
+| `GET /health` | 200 JSON `{"status":"ok",…,"env":"production"}` en 0.43s |
+| `GET /api/integraciones/ping` sin key | **401** `{"message":"API key no proporcionada."}` |
+| `GET /api/integraciones/keys` sin JWT | 401 `{"message":"Token no proporcionado."}` |
+| Key con formato válido pero inexistente | 401 `{"message":"API key inválida."}` |
+| Key con formato basura | 401 (mismo mensaje, no da pistas) |
+
+La cuarta fila es la que confirma que **la tabla `api_keys` se creó sola** con `db push`:
+la consulta se ejecutó y no hubo 500.
+
+### 7.7 Lo que NO se probó
+- No se probó el comportamiento bajo cold start de Render (~50s cuando el servicio duerme).
+- No se probó el `trust proxy` con un proxy real delante ni el rate limit en producción.
 - No hay tests automatizados commiteados: la verificación fue manual vía scripts curl.
 
 ---
@@ -1204,7 +1139,8 @@ git que el arranque previsto es `start:prod` (`db push`), se alineó el `CMD` de
 a ese mismo script para que las dos vías sean idénticas, y se limpió el P3009 local marcando
 como aplicadas las cinco migraciones cuyo contenido ya estaba en la base.
 
-**Queda abierto lo de al lado:** cuál es el servicio de backend y en qué URL vive. Ver 1.2.
+**Resuelto también lo de al lado:** el backend vive en `gestarlex-backend.onrender.com` y
+el autodeploy creó la tabla sin intervención manual. Ver 1.2 y 7.6.
 
 ### 8.11 ○ ABIERTO POR DISEÑO — La key hereda el rol del abogado dueño
 Si la key se ata a un `SOCIO`, hereda permisos de SOCIO dentro de la superficie expuesta.
@@ -1219,19 +1155,70 @@ pero si algún día se expone el puerto directo, hay que revisarlo.
 
 ---
 
-## 9. Antes del deploy
+## 9. Cómo usarla
 
-1. **Ubicar o crear el servicio de backend** y anotar su URL real (ver 1.2). Hoy
-   `gestarlex.onrender.com` sirve el frontend; la API no es alcanzable ahí. Sin esto, el
-   deploy no expone nada y los clientes reciben HTML sin un error que lo explique.
-2. Confirmar en el dashboard cuál es el **Start Command** de ese servicio. Lo esperado es
-   `npm run start:prod`. Con el Dockerfile ya alineado, las dos opciones producen el mismo
-   resultado, pero conviene saberlo.
-3. Desplegar y verificar que la tabla `api_keys` se creó: `GET /health` debe devolver JSON
-   (no HTML), después crear una key y llamar a `GET /api/integraciones/ping`.
-4. Tener en cuenta el cold start del plan free (~50s en el primer request): el skill del
-   celular tiene que tolerarlo.
-5. Guardar la key en el skill y en la laptop con cuidado — se muestra una sola vez.
+Base: `https://gestarlex-backend.onrender.com/api/integraciones`
+
+### 9.1 Crear una API key (una sola vez, con el login normal)
+
+Requiere rol `SOCIO` o `ADMIN`. El valor en claro se devuelve **una única vez**:
+
+```bash
+API=https://gestarlex-backend.onrender.com
+
+# 1. Login → accessToken
+TOKEN=$(curl -s -X POST $API/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"TU_EMAIL","password":"TU_PASSWORD"}' \
+  | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).data.accessToken')
+
+# 2. Crear la key
+curl -s -X POST $API/api/integraciones/keys \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"nombre":"casos-jurisconsultas","scopes":["casos:read","casos:write"]}'
+```
+
+Guardala fuera del repo, con permisos restringidos:
+`~/.gestarlex/casos-jurisconsultas.key` (chmod 600).
+
+### 9.2 Usarla
+
+```bash
+API=https://gestarlex-backend.onrender.com/api/integraciones
+K=$(cat ~/.gestarlex/casos-jurisconsultas.key)
+
+curl $API/ping                    -H "X-API-Key: $K"   # verificar la key
+curl $API/casos                   -H "X-API-Key: $K"   # activos por defecto
+curl "$API/casos?estado=TODOS"    -H "X-API-Key: $K"
+curl $API/casos/$ID               -H "X-API-Key: $K"
+curl $API/casos/$ID/timeline      -H "X-API-Key: $K"
+curl $API/pendientes              -H "X-API-Key: $K"
+
+curl -X PATCH $API/casos/$ID/estado    -H "X-API-Key: $K" -H 'Content-Type: application/json' \
+  -d '{"estado":"SUSPENDIDO","nota":"En espera de peritaje."}'
+
+curl -X PATCH $API/casos/$ID/actividad -H "X-API-Key: $K" -H 'Content-Type: application/json' \
+  -d '{"nota":"Llamé al juzgado, sin novedades."}'
+
+curl -X POST  $API/casos/$ID/pendientes -H "X-API-Key: $K" -H 'Content-Type: application/json' \
+  -d '{"descripcion":"Pedir copia del expediente","prioridad":"ALTA"}'
+
+curl -X POST  $API/casos/$ID/documentos -H "X-API-Key: $K" -H 'Content-Type: application/json' \
+  -d '{"nombre":"contestacion.pdf","url":"https://drive.google.com/…","tipo":"contestacion"}'
+```
+
+### 9.3 Revocar
+
+```bash
+curl -X POST $API/keys/<id>/revocar -H "Authorization: Bearer $TOKEN"
+```
+
+### 9.4 Cosas a tener en cuenta
+
+- **Cold start**: si el servicio está dormido, el primer request puede tardar ~50s. El
+  cliente tiene que tolerarlo (timeout generoso y un reintento).
+- **La key se muestra una sola vez.** Si se pierde, se crea otra y se revoca la vieja.
+- **No apuntar a `gestarlex.onrender.com`**: ese es el frontend y devuelve HTML. Ver 1.2.
 
 ## 10. Preguntas abiertas para una próxima revisión
 
