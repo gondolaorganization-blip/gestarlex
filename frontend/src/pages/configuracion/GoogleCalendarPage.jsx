@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { format } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import {
   Calendar, Link2, Unlink, RefreshCw, AlertTriangle, ShieldCheck,
   FlaskConical, CheckCircle2, XCircle, Clock, ArrowRight,
@@ -307,7 +309,7 @@ export default function GoogleCalendarPage() {
                   <option value="">— Seleccioná uno —</option>
                   {candidatos.map((c) => (
                     <option key={`${c.tipo}:${c.id}`} value={c.id}>
-                      [{c.tipoEtiqueta}] {new Date(c.fecha).toLocaleDateString('es-PA')} · {c.titulo}
+                      [{c.tipoEtiqueta}] {format(diaCalendario(c.fecha), 'd/M/yyyy')} · {c.titulo}
                       {c.caso ? ` · ${c.caso}` : ''}
                     </option>
                   ))}
