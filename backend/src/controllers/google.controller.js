@@ -70,6 +70,16 @@ export const probarEmpuje = async (req, res) => {
     where: { cuentaId_tipoLocal_localId: { cuentaId: cuenta.id, tipoLocal: tipo, localId: id } },
   });
 
+  // Diagnóstico de fechas: qué hay guardado en la base y qué se le mandó a Google.
+  // Sirve para ubicar un desfase de días sin tener que consultar la base a mano.
+  const adaptador = ADAPTADORES[tipo];
+  const registro = await prisma[adaptador.modelo].findUnique({
+    where: { id },
+    include: adaptador.incluir,
+  });
+  const evento = registro ? adaptador.aEvento(registro) : null;
+  const valorCrudo = registro?.[adaptador.campoFecha];
+
   res.json({
     ok: true,
     resultado,
@@ -78,6 +88,16 @@ export const probarEmpuje = async (req, res) => {
       googleEventId: link.googleEventId,
       estado: link.estado,
       ultimoSyncEn: link.ultimoSyncEn,
+    },
+    diagnosticoFechas: registro && {
+      campo: adaptador.campoFecha,
+      enLaBase: valorCrudo,
+      diaUTC: valorCrudo ? new Date(valorCrudo).toISOString().slice(0, 10) : null,
+      diaEnPanama: valorCrudo
+        ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Panama' }).format(new Date(valorCrudo))
+        : null,
+      horaGuardadaAparte: registro.hora ?? null,
+      seEnvioAGoogle: evento?.start,
     },
   });
 };
