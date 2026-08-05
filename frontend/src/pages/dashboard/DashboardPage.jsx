@@ -8,7 +8,7 @@ import {
   Clock, DollarSign, Calendar, TrendingUp,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { diaCalendario } from '../../utils/fechas';
+import { diaCalendario, formatHora12 } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 // ── Tarjeta de métrica ──────────────────────────────────────────────────────
@@ -64,6 +64,7 @@ function AudienciaRow({ a }) {
         <p className="text-sm font-semibold text-gray-800">
           {format(diaCalendario(a.fecha), "d MMM", { locale: es })}
         </p>
+        {a.hora && <p className="text-xs text-gray-600">{formatHora12(a.hora)}</p>}
         <p className={`text-xs font-medium ${alerta[a.alerta]}`}>
           {a.diasRestantes === 0 ? 'Hoy' : `en ${a.diasRestantes}d`}
         </p>
