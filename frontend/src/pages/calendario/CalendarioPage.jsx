@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getCalendarioMensual, getCalendarioSemanal, getAlertas } from '../../api/calendario';
 import { format, parseISO, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
+import { formatHora12 } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, AlertTriangle, Clock } from 'lucide-react';
 import Spinner from '../../components/ui/Spinner';
@@ -252,7 +253,7 @@ export default function CalendarioPage() {
                                 key={j}
                                 className="text-[10px] px-1 py-0.5 bg-indigo-100 text-indigo-700 rounded truncate leading-tight"
                               >
-                                {a.hora ? a.hora.slice(0, 5) + ' ' : ''}{a.caso.numero}
+                                {a.hora ? formatHora12(a.hora) + ' ' : ''}{a.caso.numero}
                               </div>
                             ))}
                             {events.terminos.slice(0, maxTer).map((t, j) => {
@@ -327,7 +328,7 @@ export default function CalendarioPage() {
                               </span>
                               {a.hora && (
                                 <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                                  <Clock className="w-3 h-3" /> {a.hora.slice(0, 5)}
+                                  <Clock className="w-3 h-3" /> {formatHora12(a.hora)}
                                 </span>
                               )}
                             </div>
@@ -482,7 +483,7 @@ function WeeklyView({ data, isLoading, todayStr }) {
                   <div className="p-1.5 bg-indigo-50 border border-indigo-100 rounded-lg hover:border-indigo-300 transition-colors">
                     {a.hora && (
                       <p className="text-[10px] font-bold text-indigo-700 flex items-center gap-0.5">
-                        <Clock className="w-2.5 h-2.5" /> {a.hora.slice(0, 5)}
+                        <Clock className="w-2.5 h-2.5" /> {formatHora12(a.hora)}
                       </p>
                     )}
                     <p className="text-[10px] font-semibold text-indigo-700 truncate">{a.caso.numero}</p>

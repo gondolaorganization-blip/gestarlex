@@ -5,10 +5,11 @@ import Badge from '../../../components/ui/Badge';
 import Spinner from '../../../components/ui/Spinner';
 import { Gavel, Calendar, Plus, X, ChevronDown } from 'lucide-react';
 import { format, parseISO, isPast } from 'date-fns';
-import { diaCalendario } from '../../../utils/fechas';
+import { diaCalendario, formatHora12, opcionesHora } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 
+const OPCIONES_HORA = opcionesHora();
 const TIPOS = ['inicial', 'pruebas', 'alegatos', 'sentencia', 'conciliación', 'apelación', 'otro'];
 const ESTADOS = ['PENDIENTE', 'REALIZADA', 'SUSPENDIDA', 'CANCELADA'];
 
@@ -62,12 +63,16 @@ function FormAudiencia({ casoId, onClose }) {
 
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Hora</label>
-          <input
-            type="time"
+          <select
             value={form.hora}
             onChange={(e) => set('hora', e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          >
+            <option value="">Sin hora definida</option>
+            {OPCIONES_HORA.map((o) => (
+              <option key={o.valor} value={o.valor}>{o.etiqueta}</option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -220,7 +225,7 @@ function AudienciaCard({ a, casoId }) {
           <p className="text-sm font-bold text-gray-800">
             {format(fecha, "d MMM yyyy", { locale: es })}
           </p>
-          {a.hora && <p className="text-xs text-gray-500">{a.hora}</p>}
+          {a.hora && <p className="text-xs text-gray-500">{formatHora12(a.hora)}</p>}
           <div className="mt-1"><Badge value={a.estado} /></div>
           {pasada && <p className="text-xs text-orange-500 mt-1">Sin actualizar</p>}
           {!editandoEstado && (

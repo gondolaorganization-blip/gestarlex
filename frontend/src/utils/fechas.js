@@ -19,3 +19,38 @@ import { parseISO } from 'date-fns';
  * ahí la conversión a hora local es la correcta y esto introduciría el bug inverso.
  */
 export const diaCalendario = (iso) => parseISO(String(iso).slice(0, 10));
+
+/**
+ * "20:30" → "8:30 p. m."
+ *
+ * La hora se guarda en 24h (formato estable, sin ambigüedad), pero en Panamá se
+ * lee en 12h. Mostrar "20:30" obliga a traducir mentalmente cada vez.
+ */
+export const formatHora12 = (hhmm) => {
+  if (!hhmm) return '';
+  const [h, m] = String(hhmm).split(':');
+  const hora = Number(h);
+  if (Number.isNaN(hora) || hora > 23) return String(hhmm);
+  const sufijo = hora < 12 ? 'a. m.' : 'p. m.';
+  const h12 = hora % 12 === 0 ? 12 : hora % 12;
+  return `${h12}:${(m ?? '00').padStart(2, '0')} ${sufijo}`;
+};
+
+/**
+ * Opciones para elegir la hora de una audiencia, de 6:00 a 20:45 cada 15 minutos.
+ *
+ * Reemplaza al <input type="time"> nativo, que en un Mac configurado en 12 horas
+ * muestra un campo de hora con máximo 12: al tipear "20" el input queda inválido y
+ * devuelve cadena vacía, de modo que la audiencia se guardaba SIN hora y sin avisar.
+ * Un desplegable con etiquetas a. m. / p. m. no tiene esa ambigüedad.
+ */
+export const opcionesHora = () => {
+  const opciones = [];
+  for (let h = 6; h <= 20; h++) {
+    for (const m of ['00', '15', '30', '45']) {
+      const valor = `${String(h).padStart(2, '0')}:${m}`;
+      opciones.push({ valor, etiqueta: formatHora12(valor) });
+    }
+  }
+  return opciones;
+};
