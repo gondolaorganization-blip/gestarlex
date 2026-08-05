@@ -28,6 +28,7 @@ router.get('/estado', authenticate, verificarAcceso, asyncHandler(ctrl.estadoCon
 const protegido = [authenticate, verificarAcceso, minRol('ASOCIADO')];
 
 // Prueba controlada: empuja UN registro y devuelve el detalle.
+router.get('/prueba/candidatos', ...protegido, asyncHandler(ctrl.listarCandidatos));
 router.post('/prueba/empujar', ...protegido, asyncHandler(ctrl.probarEmpuje));
 
 // Trae de Google lo que cambió (incremental, seguro de correr siempre).

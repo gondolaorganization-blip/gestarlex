@@ -14,6 +14,10 @@ export const desconectarGoogle = () =>
 
 // ─── SYNC ─────────────────────────────────────────────────────────────────────
 
+/** Próximos registros sincronizables, para elegir uno en la prueba. */
+export const getCandidatos = () =>
+  api.get('/google/prueba/candidatos').then((r) => r.data.data);
+
 /** Prueba controlada: empuja UN registro a Google. */
 export const probarEmpuje = (tipo, id) =>
   api.post('/google/prueba/empujar', { tipo, id }).then((r) => r.data);

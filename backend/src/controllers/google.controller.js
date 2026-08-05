@@ -130,3 +130,42 @@ export const resolverIncidencia = async (req, res) => {
   });
   res.json({ ok: true, data: resuelta });
 };
+
+/**
+ * Candidatos para la prueba: próximos registros sincronizables, con el título tal
+ * como se vería en Google. Evita tener que buscar un cuid a mano en la base.
+ */
+export const listarCandidatos = async (req, res) => {
+  const { firmaId } = req.user;
+  const desde = new Date();
+  desde.setHours(0, 0, 0, 0);
+  const hasta = new Date(desde);
+  hasta.setDate(hasta.getDate() + 180);
+
+  const grupos = await Promise.all(
+    Object.entries(ADAPTADORES).map(async ([tipo, adaptador]) => {
+      const registros = await prisma[adaptador.modelo].findMany({
+        where: {
+          ...adaptador.dondeFirma(firmaId),
+          [adaptador.campoFecha]: { gte: desde, lte: hasta },
+        },
+        include: adaptador.incluir,
+        orderBy: { [adaptador.campoFecha]: 'asc' },
+        take: 25,
+      });
+
+      return registros.map((r) => ({
+        tipo,
+        tipoEtiqueta: adaptador.etiqueta,
+        id: r.id,
+        // El mismo texto que tendría el evento en Google, para que sepas qué vas a ver.
+        titulo: adaptador.aEvento(r).summary,
+        fecha: r[adaptador.campoFecha],
+        caso: r.caso ? `${r.caso.numero} — ${r.caso.titulo}` : null,
+      }));
+    })
+  );
+
+  const candidatos = grupos.flat().sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  res.json({ ok: true, data: candidatos, total: candidatos.length });
+};

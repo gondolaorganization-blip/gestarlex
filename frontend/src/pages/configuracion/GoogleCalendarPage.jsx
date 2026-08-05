@@ -9,14 +9,8 @@ import {
 import {
   getEstadoGoogle, iniciarConexionGoogle, desconectarGoogle,
   probarEmpuje, sincronizarEntrada, sincronizarTodo, habilitarSyncCompleto,
-  getIncidencias, resolverIncidencia,
+  getIncidencias, resolverIncidencia, getCandidatos,
 } from '../../api/google';
-
-const TIPOS = [
-  { valor: 'AUDIENCIA', etiqueta: 'Audiencia' },
-  { valor: 'TERMINO', etiqueta: 'Término procesal' },
-  { valor: 'TAREA', etiqueta: 'Tarea' },
-];
 
 const ETIQUETA_RESOLUCION = {
   GESTARLEX: 'Que gane GestarLex',
@@ -134,6 +128,12 @@ export default function GoogleCalendarPage() {
     enabled: !!estado?.conectada,
   });
 
+  const { data: candidatos = [] } = useQuery({
+    queryKey: ['google', 'candidatos'],
+    queryFn: getCandidatos,
+    enabled: !!estado?.conectada,
+  });
+
   const refrescar = () => {
     qc.invalidateQueries({ queryKey: ['google'] });
   };
@@ -151,7 +151,7 @@ export default function GoogleCalendarPage() {
   });
 
   const empujarPrueba = useMutation({
-    mutationFn: () => probarEmpuje(prueba.tipo, prueba.id.trim()),
+    mutationFn: () => probarEmpuje(prueba.tipo, prueba.id),
     onSuccess: (r) => {
       setResultadoPrueba(r);
       toast.success(`Resultado: ${r.resultado.accion}`);
@@ -292,34 +292,43 @@ export default function GoogleCalendarPage() {
             </p>
 
             <div className="flex flex-wrap gap-2 items-end">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Tipo</label>
+              <div className="flex-1 min-w-[320px]">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Elegí un registro ({candidatos.length} próximos)
+                </label>
                 <select
-                  value={prueba.tipo}
-                  onChange={(e) => setPrueba((p) => ({ ...p, tipo: e.target.value }))}
-                  className="text-sm border border-gray-300 rounded-md px-3 py-1.5"
-                >
-                  {TIPOS.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[240px]">
-                <label className="block text-xs text-gray-500 mb-1">ID del registro</label>
-                <input
                   value={prueba.id}
-                  onChange={(e) => setPrueba((p) => ({ ...p, id: e.target.value }))}
-                  placeholder="cl..."
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-1.5 font-mono"
-                />
+                  onChange={(e) => {
+                    const c = candidatos.find((x) => x.id === e.target.value);
+                    setPrueba({ tipo: c?.tipo ?? 'AUDIENCIA', id: e.target.value });
+                  }}
+                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-1.5"
+                >
+                  <option value="">— Seleccioná uno —</option>
+                  {candidatos.map((c) => (
+                    <option key={`${c.tipo}:${c.id}`} value={c.id}>
+                      [{c.tipoEtiqueta}] {new Date(c.fecha).toLocaleDateString('es-PA')} · {c.titulo}
+                      {c.caso ? ` · ${c.caso}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
                 onClick={() => empujarPrueba.mutate()}
-                disabled={!prueba.id.trim() || empujarPrueba.isPending}
+                disabled={!prueba.id || empujarPrueba.isPending}
                 className="text-sm px-4 py-1.5 rounded-md bg-gray-900 text-white font-medium hover:bg-gray-800 inline-flex items-center gap-1.5 disabled:opacity-40"
               >
                 <ArrowRight className="w-4 h-4" />
                 {empujarPrueba.isPending ? 'Enviando…' : 'Empujar a Google'}
               </button>
             </div>
+
+            {candidatos.length === 0 && (
+              <p className="text-xs text-amber-700 mt-2">
+                No hay audiencias, términos ni tareas con fecha en los próximos 6 meses.
+                Creá uno desde un caso para poder probar.
+              </p>
+            )}
 
             {resultadoPrueba && (
               <pre className="mt-4 text-xs bg-gray-900 text-gray-100 rounded-md p-3 overflow-x-auto">
