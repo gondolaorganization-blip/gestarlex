@@ -25,6 +25,7 @@ import CotizadorPage from './pages/cotizador/CotizadorPage';
 import PlantillasPage from './pages/plantillas/PlantillasPage';
 import PerfilPage from './pages/perfil/PerfilPage';
 import AsistentePage from './pages/asistente/AsistentePage';
+import GoogleCalendarPage from './pages/configuracion/GoogleCalendarPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import LandingPage from './pages/LandingPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
@@ -71,6 +72,7 @@ export default function App() {
               <Route path="/plantillas" element={<PlantillasPage />} />
               <Route path="/perfil" element={<PerfilPage />} />
               <Route path="/asistente" element={<AsistentePage />} />
+              <Route path="/configuracion/google-calendar" element={<GoogleCalendarPage />} />
             </Route>
             <Route path="/suscripcion" element={<SuscripcionPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

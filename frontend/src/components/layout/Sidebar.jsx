@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FolderOpen, Users, Calendar,
   FileText, Scale, Clock, Receipt, LogOut, Briefcase, BarChart2, Calculator, ScrollText, Bot, ListChecks,
+  CalendarSync,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -20,6 +21,7 @@ const nav = [
   { to: '/cotizador',  label: 'Cotizador',    icon: Calculator },
   { to: '/plantillas', label: 'Plantillas',   icon: ScrollText },
   { to: '/asistente',  label: 'Asistente IA', icon: Bot },
+  { to: '/configuracion/google-calendar', label: 'Google Calendar', icon: CalendarSync },
 ];
 
 export default function Sidebar() {

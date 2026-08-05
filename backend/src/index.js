@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { errorHandler } from './middleware/error.js';
 import { initCronJobs } from './cron/reminders.cron.js';
+import { initCalendarSyncCron } from './cron/calendarSync.cron.js';
 
 // Rutas
 import authRoutes from './routes/auth.routes.js';
@@ -27,6 +28,7 @@ import iaRoutes from './routes/ia.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import paypalRoutes from './routes/paypal.routes.js';
 import integracionesRoutes from './routes/integraciones.routes.js';
+import googleRoutes from './routes/google.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -85,6 +87,7 @@ app.use('/api/ia',             iaRoutes);
 app.use('/api/admin',          adminRoutes);
 app.use('/api/paypal',         paypalRoutes);
 app.use('/api/integraciones',  integracionesRoutes);
+app.use('/api/google',         googleRoutes);
 
 // 404
 app.use((_req, res) => res.status(404).json({ ok: false, message: 'Ruta no encontrada.' }));
@@ -95,6 +98,7 @@ app.listen(PORT, () => {
   console.log(`GESTARLEX API corriendo en http://localhost:${PORT}`);
   console.log(`Ambiente: ${process.env.NODE_ENV || 'development'}`);
   initCronJobs();
+  initCalendarSyncCron();
 });
 
 export default app;

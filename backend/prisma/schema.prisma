@@ -121,6 +121,42 @@ enum TipoComunicacion {
   CARTA
 }
 
+// ─── SYNC GOOGLE CALENDAR ─────────────────────────────────────────────────────
+
+enum EstadoGoogleCuenta {
+  ACTIVA
+  REVOCADA   // el usuario retiró el permiso desde su cuenta de Google
+  ERROR      // el refresh token dejó de funcionar; requiere reconectar
+}
+
+// Qué entidad de GestarLex representa un evento sincronizado.
+// EXTERNO = nació en Google y todavía no está atado a un caso.
+enum TipoEventoSync {
+  AUDIENCIA
+  TERMINO
+  TAREA
+  EXTERNO
+}
+
+enum EstadoCalendarLink {
+  OK
+  CONFLICTO         // cambió en ambos lados: congelado hasta que el usuario decida
+  PENDIENTE_BORRADO // desapareció de un lado: nunca se borra sin confirmación
+}
+
+enum TipoIncidenciaSync {
+  CONFLICTO
+  BORRADO_EN_GOOGLE
+  BORRADO_EN_GESTARLEX
+  ERROR
+}
+
+enum EstadoIncidenciaSync {
+  PENDIENTE
+  RESUELTA
+  DESCARTADA
+}
+
 enum TipoGasto {
   TASA_JUDICIAL  // tasas y timbres judiciales panameños
   NOTARIA        // gastos notariales
@@ -174,6 +210,8 @@ model Firma {
   suscripcionEventos  SuscripcionEvento[]
   emailLogs           EmailLog[]
   apiKeys             ApiKey[]
+  googleCuenta        GoogleCuenta?
+  eventosExternos     EventoExterno[]
 
   @@map("firmas")
 }
@@ -272,6 +310,7 @@ model Caso {
   historial       CasoHistorial[]
   timers          Timer[]
   emailLogs       EmailLog[]
+  eventosExternos EventoExterno[]
 
   @@unique([firmaId, numero])
   @@map("casos")
@@ -616,4 +655,132 @@ model ApiKey {
 
   @@index([firmaId])
   @@map("api_keys")
+}
+
+// ─── GOOGLE CALENDAR ──────────────────────────────────────────────────────────
+
+// GoogleCuenta — la conexión OAuth del despacho con Google Calendar.
+// Una por firma: los eventos de todos los abogados van al mismo calendario secundario.
+//
+// SALVAGUARDA #1 — calendarId se fija UNA sola vez, en el callback de OAuth, tras
+// verificar que el calendario se llama "GestarLex" y que NO es el principal. Ninguna
+// ruta acepta un calendarId por request: el wrapper de Google siempre lo lee de acá.
+model GoogleCuenta {
+  id                  String             @id @default(cuid())
+  firmaId             String             @unique
+  abogadoId           String             // quién autorizó la conexión
+  googleEmail         String             // cuenta de Google conectada, para mostrar en la UI
+  calendarId          String             // ID del calendario secundario "GestarLex"
+  calendarSummary     String             // nombre tal como lo devolvió Google, para verificarlo
+  // Tokens cifrados con AES-256-GCM (ver lib/cifrado.js). Nunca en texto plano,
+  // nunca en logs, nunca en una respuesta de la API.
+  refreshTokenCifrado String
+  accessTokenCifrado  String?
+  accessTokenExpiraEn DateTime?
+  scopes              String[]
+  // syncToken de Google: permite pedir SOLO lo que cambió desde la última corrida.
+  // Si Google lo invalida (410), se hace una resincronización completa.
+  syncToken           String?
+  estado              EstadoGoogleCuenta @default(ACTIVA)
+  // Interruptor del sync masivo. Arranca APAGADO a propósito: hasta que la prueba
+  // de un solo evento pase en ambas direcciones, el backfill no puede correr —
+  // ni por cron ni por endpoint. Se enciende explícitamente desde la UI.
+  syncCompletoHabilitado Boolean         @default(false)
+  ultimoSyncEn        DateTime?
+  ultimoErrorEn       DateTime?
+  ultimoError         String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  firma        Firma           @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  links        CalendarLink[]
+  incidencias  SyncIncidencia[]
+
+  @@map("google_cuentas")
+}
+
+// CalendarLink — el mapeo entre un registro de GestarLex y un evento de Google.
+//
+// SALVAGUARDA #2 (idempotencia) — los dos @@unique son el candado principal: si ya
+// existe la fila, el sync hace UPDATE, jamás INSERT. El candado secundario vive en el
+// propio ID del evento en Google, que es determinístico (derivado del cuid local), de
+// modo que aun perdiendo esta tabla un re-alta devuelve 409 en vez de crear un duplicado.
+model CalendarLink {
+  id             String             @id @default(cuid())
+  cuentaId       String
+  tipoLocal      TipoEventoSync
+  localId        String             // id del Audiencia/TerminoProcesal/Tarea/EventoExterno
+  googleEventId  String
+  // hashLocal — huella de los campos sincronizados en la última corrida exitosa.
+  // Si no cambió, ni siquiera se llama a Google. Comparado contra el etag de Google,
+  // es lo que permite detectar un conflicto en vez de pisar (salvaguarda #4).
+  hashLocal      String?
+  etagGoogle     String?
+  updatedGoogle  DateTime?
+  estado         EstadoCalendarLink @default(OK)
+  ultimoSyncEn   DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  cuenta      GoogleCuenta     @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  incidencias SyncIncidencia[]
+
+  @@unique([cuentaId, tipoLocal, localId])
+  @@unique([cuentaId, googleEventId])
+  @@index([cuentaId, estado])
+  @@map("calendar_links")
+}
+
+// SyncIncidencia — todo lo que el sync NO resuelve solo y requiere decisión humana.
+//
+// SALVAGUARDAS #3 y #4 — ningún borrado ni ninguna sobreescritura en conflicto ocurre
+// de forma automática: se crea una incidencia PENDIENTE con ambas versiones guardadas,
+// y la acción real solo se ejecuta cuando el usuario la resuelve explícitamente.
+model SyncIncidencia {
+  id            String               @id @default(cuid())
+  cuentaId      String
+  linkId        String?              // null si el link ya no existe
+  tipo          TipoIncidenciaSync
+  titulo        String               // resumen legible para la bandeja de la UI
+  versionLocal  Json?                // snapshot del registro de GestarLex
+  versionGoogle Json?                // snapshot del evento de Google
+  detalle       String?
+  estado        EstadoIncidenciaSync @default(PENDIENTE)
+  resolucion    String?              // qué eligió el usuario: GESTARLEX | GOOGLE | IGNORAR | BORRAR
+  resueltaEn    DateTime?
+  resueltaPorId String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  cuenta GoogleCuenta  @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+  link   CalendarLink? @relation(fields: [linkId], references: [id], onDelete: SetNull)
+
+  @@index([cuentaId, estado])
+  @@map("sync_incidencias")
+}
+
+// EventoExterno — evento creado directamente en el calendario "GestarLex" de Google.
+// Audiencia, TerminoProcesal y Tarea exigen casoId, y un evento nacido en Google no
+// trae caso: en vez de inventarle uno, aterriza acá y se muestra en el calendario como
+// "externo, sin caso" hasta que el usuario lo asigne o lo convierta.
+model EventoExterno {
+  id            String    @id @default(cuid())
+  firmaId       String
+  titulo        String
+  inicio        DateTime
+  fin           DateTime?
+  todoElDia     Boolean   @default(false)
+  descripcion   String?
+  ubicacion     String?
+  casoId        String?   // asignado a mano después, desde la UI
+  convertidoAId String?   // id de la Audiencia/Termino/Tarea si se convirtió
+  convertidoA   TipoEventoSync?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  firma Firma @relation(fields: [firmaId], references: [id], onDelete: Cascade)
+  caso  Caso? @relation(fields: [casoId], references: [id], onDelete: SetNull)
+
+  @@index([firmaId, inicio])
+  @@map("eventos_externos")
 }
