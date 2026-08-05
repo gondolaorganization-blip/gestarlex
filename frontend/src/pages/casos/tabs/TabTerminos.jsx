@@ -4,6 +4,7 @@ import { getTerminos, crearTermino, completarTermino } from '../../../api/termin
 import Spinner from '../../../components/ui/Spinner';
 import { Clock, CheckCircle, Plus, X } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
+import { diaCalendario } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 
@@ -12,7 +13,7 @@ const PRIORIDADES = ['ALTA', 'MEDIA', 'BAJA'];
 const semaforo = (fechaVence, estado) => {
   if (estado === 'COMPLETADO') return { color: 'bg-green-500', label: 'Completado', cls: 'text-green-700 bg-green-50 border-green-200' };
   if (estado === 'VENCIDO')    return { color: 'bg-red-600',   label: 'Vencido',    cls: 'text-red-700   bg-red-50   border-red-200'   };
-  const dias = differenceInDays(parseISO(fechaVence), new Date());
+  const dias = differenceInDays(diaCalendario(fechaVence), new Date());
   if (dias < 0)  return { color: 'bg-red-600',    label: 'Vencido',     cls: 'text-red-700   bg-red-50   border-red-200'   };
   if (dias === 0) return { color: 'bg-red-500',   label: 'Vence hoy',   cls: 'text-red-600   bg-red-50   border-red-200'   };
   if (dias <= 3)  return { color: 'bg-orange-400', label: `${dias}d`,   cls: 'text-orange-700 bg-orange-50 border-orange-200' };
@@ -193,7 +194,7 @@ export default function TabTerminos({ casoId }) {
                                 {t.prioridad}
                               </span>
                               <span className="text-xs text-gray-500">
-                                Vence: {format(parseISO(t.fechaVence), "d 'de' MMMM yyyy", { locale: es })}
+                                Vence: {format(diaCalendario(t.fechaVence), "d 'de' MMMM yyyy", { locale: es })}
                               </span>
                             </div>
                             {t.notas && <p className="text-xs text-gray-500 mt-1">{t.notas}</p>}

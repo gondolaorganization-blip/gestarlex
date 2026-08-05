@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { getPoderes, getResumenPoderes, getProximosAVencer, getVencidos, crearPoder, revocarPoder } from '../../api/poderes';
 import { getClientes } from '../../api/clientes';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 import { Scale, AlertTriangle, Plus, Search, X, FileText, Download, Printer } from 'lucide-react';
 import Spinner from '../../components/ui/Spinner';
@@ -587,7 +588,7 @@ export default function PoderesPage() {
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell text-gray-500 text-xs">
                         {p.fechaOtorgamiento
-                          ? format(parseISO(p.fechaOtorgamiento), 'dd/MM/yyyy')
+                          ? format(diaCalendario(p.fechaOtorgamiento), 'dd/MM/yyyy')
                           : '—'}
                       </td>
                       <td className="px-4 py-3">
@@ -596,7 +597,7 @@ export default function PoderesPage() {
                         </span>
                         {p.fechaVence && (
                           <p className="text-xs text-gray-400 mt-0.5">
-                            {format(parseISO(p.fechaVence), 'dd/MM/yyyy')}
+                            {format(diaCalendario(p.fechaVence), 'dd/MM/yyyy')}
                           </p>
                         )}
                       </td>

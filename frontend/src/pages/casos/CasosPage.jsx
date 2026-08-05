@@ -6,6 +6,7 @@ import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import { Search, Plus, FolderOpen, User, Building2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 const TIPOS_CASO = ['CIVIL', 'PENAL', 'LABORAL', 'COMERCIAL', 'ADMINISTRATIVO', 'FAMILIAR', 'MARITIMO'];
@@ -126,7 +127,7 @@ export default function CasosPage() {
                   <td className="px-4 py-3"><Badge value={c.tipo} /></td>
                   <td className="px-4 py-3"><Badge value={c.estado} /></td>
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                    {format(parseISO(c.fechaApertura), 'd MMM yyyy', { locale: es })}
+                    {format(diaCalendario(c.fechaApertura), 'd MMM yyyy', { locale: es })}
                   </td>
                   <td className="px-4 py-3">
                     <Link

@@ -5,8 +5,8 @@ const PLANS = [
   {
     id: "solo",
     name: "Solo",
-    price: 49,
-    annual: 39,
+    price: 34.99,
+    annual: 27.99,
     desc: "Para el abogado independiente",
     color: "#C9A84C",
     features: [
@@ -23,8 +23,8 @@ const PLANS = [
   {
     id: "firma",
     name: "Firma",
-    price: 99,
-    annual: 79,
+    price: 69.99,
+    annual: 55.99,
     desc: "Para firmas y despachos en crecimiento",
     color: "#C9A84C",
     popular: true,
@@ -42,8 +42,8 @@ const PLANS = [
   {
     id: "despacho",
     name: "Despacho",
-    price: 179,
-    annual: 143,
+    price: 129.99,
+    annual: 103.99,
     desc: "Para grandes despachos multiequipo",
     color: "#C9A84C",
     features: [

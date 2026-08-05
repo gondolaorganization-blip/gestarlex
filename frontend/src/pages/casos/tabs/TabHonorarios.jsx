@@ -13,6 +13,7 @@ import {
   Check, AlertCircle, Lock, Receipt,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -568,7 +569,7 @@ export default function TabHonorarios({ casoId }) {
                 {registros.map((r) => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
-                      {format(parseISO(r.fecha), "d MMM yyyy", { locale: es })}
+                      {format(diaCalendario(r.fecha), "d MMM yyyy", { locale: es })}
                     </td>
                     <td className="px-4 py-3 text-gray-700 text-xs whitespace-nowrap">
                       {r.abogado?.nombre ?? '—'}

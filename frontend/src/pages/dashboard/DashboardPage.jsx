@@ -8,6 +8,7 @@ import {
   Clock, DollarSign, Calendar, TrendingUp,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 // ── Tarjeta de métrica ──────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ function AudienciaRow({ a }) {
       </div>
       <div className="text-right shrink-0">
         <p className="text-sm font-semibold text-gray-800">
-          {format(parseISO(a.fecha), "d MMM", { locale: es })}
+          {format(diaCalendario(a.fecha), "d MMM", { locale: es })}
         </p>
         <p className={`text-xs font-medium ${alerta[a.alerta]}`}>
           {a.diasRestantes === 0 ? 'Hoy' : `en ${a.diasRestantes}d`}
@@ -87,7 +88,7 @@ function TerminoRow({ t }) {
         </div>
       </div>
       <p className="text-xs text-gray-500 shrink-0">
-        {format(parseISO(t.fechaVence), "d MMM", { locale: es })}
+        {format(diaCalendario(t.fechaVence), "d MMM", { locale: es })}
       </p>
     </div>
   );

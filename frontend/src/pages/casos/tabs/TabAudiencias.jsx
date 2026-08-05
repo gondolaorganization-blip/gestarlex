@@ -5,6 +5,7 @@ import Badge from '../../../components/ui/Badge';
 import Spinner from '../../../components/ui/Spinner';
 import { Gavel, Calendar, Plus, X, ChevronDown } from 'lucide-react';
 import { format, parseISO, isPast } from 'date-fns';
+import { diaCalendario } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 
@@ -145,7 +146,7 @@ function AudienciaCard({ a, casoId }) {
     onError: () => toast.error('Error al actualizar'),
   });
 
-  const fecha = parseISO(a.fecha);
+  const fecha = diaCalendario(a.fecha);
   const pasada = isPast(fecha) && a.estado === 'PENDIENTE';
 
   return (

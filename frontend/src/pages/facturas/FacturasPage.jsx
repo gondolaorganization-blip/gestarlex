@@ -5,6 +5,7 @@ import { getFacturas, getAging, crearFactura, cambiarEstadoFactura } from '../..
 import { getClientes } from '../../api/clientes';
 import { getCasos } from '../../api/casos';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { Receipt, Plus, X, ChevronDown, AlertTriangle, ExternalLink, UserPlus, Trash2 } from 'lucide-react';
 import Spinner from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
@@ -241,12 +242,12 @@ export default function FacturasPage() {
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{fmtMonto(f.monto)}</td>
                       <td className="px-4 py-3 text-xs text-gray-500 hidden lg:table-cell">
-                        {format(parseISO(f.fecha), 'dd/MM/yyyy')}
+                        {format(diaCalendario(f.fecha), 'dd/MM/yyyy')}
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         {f.vence ? (
                           <span className={`text-xs ${new Date(f.vence) < new Date() && f.estado !== 'PAGADA' ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                            {format(parseISO(f.vence), 'dd/MM/yyyy')}
+                            {format(diaCalendario(f.vence), 'dd/MM/yyyy')}
                           </span>
                         ) : <span className="text-xs text-gray-400">—</span>}
                       </td>

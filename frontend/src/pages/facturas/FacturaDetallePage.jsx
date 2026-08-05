@@ -5,6 +5,7 @@ import { getFactura, actualizarFactura } from '../../api/facturas';
 import { getClientes } from '../../api/clientes';
 import Spinner from '../../components/ui/Spinner';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 import { ArrowLeft, Printer, Pencil, X, Trash2, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -115,7 +116,7 @@ export default function FacturaDetallePage() {
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Fecha de emisión</span>
               <span className="font-medium text-gray-800">
-                {format(parseISO(factura.fecha), "d 'de' MMMM yyyy", { locale: es })}
+                {format(diaCalendario(factura.fecha), "d 'de' MMMM yyyy", { locale: es })}
               </span>
             </div>
             {factura.vence && (
@@ -124,7 +125,7 @@ export default function FacturaDetallePage() {
                 <span className={`font-medium ${
                   factura.estado === 'VENCIDA' ? 'text-red-600' : 'text-gray-800'
                 }`}>
-                  {format(parseISO(factura.vence), "d 'de' MMMM yyyy", { locale: es })}
+                  {format(diaCalendario(factura.vence), "d 'de' MMMM yyyy", { locale: es })}
                 </span>
               </div>
             )}

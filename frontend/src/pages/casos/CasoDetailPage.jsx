@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 const TABS = [
@@ -209,7 +210,7 @@ export default function CasoDetailPage() {
               </div>
             )}
             <div className="flex items-center gap-2 text-gray-400 text-xs">
-              Abierto el {format(parseISO(caso.fechaApertura), "d 'de' MMMM yyyy", { locale: es })}
+              Abierto el {format(diaCalendario(caso.fechaApertura), "d 'de' MMMM yyyy", { locale: es })}
             </div>
           </div>
 

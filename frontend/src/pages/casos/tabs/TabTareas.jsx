@@ -5,6 +5,7 @@ import { getAbogados } from '../../../api/abogados';
 import Spinner from '../../../components/ui/Spinner';
 import { CheckSquare, CheckCircle, Circle, Plus, X } from 'lucide-react';
 import { format, parseISO, isPast } from 'date-fns';
+import { diaCalendario } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 
@@ -184,7 +185,7 @@ export default function TabTareas({ casoId }) {
               <div className="space-y-2">
                 {pendientes.map((t) => {
                   const cfg = prioridadCfg[t.prioridad] ?? prioridadCfg.BAJA;
-                  const vencida = t.fechaLimite && isPast(parseISO(t.fechaLimite)) && t.estado !== 'COMPLETADA';
+                  const vencida = t.fechaLimite && isPast(diaCalendario(t.fechaLimite)) && t.estado !== 'COMPLETADA';
                   return (
                     <div key={t.id} className="flex items-start gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors">
                       <button
@@ -210,7 +211,7 @@ export default function TabTareas({ casoId }) {
                           {t.fechaLimite && (
                             <span className={`text-xs ${vencida ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
                               {vencida ? '⚠ ' : ''}
-                              {format(parseISO(t.fechaLimite), "d 'de' MMM yyyy", { locale: es })}
+                              {format(diaCalendario(t.fechaLimite), "d 'de' MMM yyyy", { locale: es })}
                             </span>
                           )}
                         </div>

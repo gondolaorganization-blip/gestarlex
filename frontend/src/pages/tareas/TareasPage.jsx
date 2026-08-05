@@ -7,6 +7,7 @@ import {
 } from '../../api/tareas';
 import { getAbogados } from '../../api/abogados';
 import Spinner from '../../components/ui/Spinner';
+import { diaCalendario } from '../../utils/fechas';
 import { CheckCircle, Circle, Search, Folder, Pencil, X, StickyNote } from 'lucide-react';
 import {
   format, parseISO, isToday, startOfDay, differenceInCalendarDays,
@@ -34,9 +35,9 @@ const GRUPOS = [
 
 function grupoDe(tarea) {
   if (!tarea.fechaLimite) return 'sinFecha';
-  const dias = differenceInCalendarDays(startOfDay(parseISO(tarea.fechaLimite)), startOfDay(new Date()));
+  const dias = differenceInCalendarDays(startOfDay(diaCalendario(tarea.fechaLimite)), startOfDay(new Date()));
   if (dias < 0) return 'vencidas';
-  if (isToday(parseISO(tarea.fechaLimite))) return 'hoy';
+  if (isToday(diaCalendario(tarea.fechaLimite))) return 'hoy';
   if (dias <= 7) return 'semana';
   return 'despues';
 }
@@ -164,7 +165,7 @@ function TareaCard({ t, onComplete, completando, onEdit }) {
           {t.fechaLimite && (
             <span className={`text-xs ${vencida ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
               {vencida ? '⚠ ' : ''}
-              {format(parseISO(t.fechaLimite), "d 'de' MMM yyyy", { locale: es })}
+              {format(diaCalendario(t.fechaLimite), "d 'de' MMM yyyy", { locale: es })}
             </span>
           )}
           {t.estado === 'EN_PROCESO' && (

@@ -15,6 +15,7 @@ import {
   MessagesSquare, Plus, X, Trash2, Users,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ export default function ClienteDetailPage() {
                       <Badge value={p.tipo} />
                       {p.fechaVence && (
                         <span className="text-xs text-gray-400">
-                          Vence {format(parseISO(p.fechaVence), "d MMM yyyy", { locale: es })}
+                          Vence {format(diaCalendario(p.fechaVence), "d MMM yyyy", { locale: es })}
                         </span>
                       )}
                     </div>
@@ -398,7 +399,7 @@ export default function ClienteDetailPage() {
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <span className="text-xs text-gray-400 whitespace-nowrap">
-                        {format(parseISO(c.fecha), "d MMM yyyy", { locale: es })}
+                        {format(diaCalendario(c.fecha), "d MMM yyyy", { locale: es })}
                       </span>
                       {puedeEliminarCom && (
                         confirmDelCom === c.id ? (

@@ -9,6 +9,7 @@ import {
   Plus, Trash2, X, MessagesSquare, Send, CheckCircle, AlertCircle,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ export default function TabComunicaciones({ casoId, clienteId }) {
 
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-xs text-gray-400 whitespace-nowrap">
-                          {format(parseISO(c.fecha), "d MMM yyyy", { locale: es })}
+                          {format(diaCalendario(c.fecha), "d MMM yyyy", { locale: es })}
                         </span>
                         {puedeEliminar && (
                           confirmDel === c.id ? (

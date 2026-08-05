@@ -6,6 +6,7 @@ import Spinner from '../../../components/ui/Spinner';
 import toast from 'react-hot-toast';
 import { DollarSign, Plus, Check, Trash2, X, Receipt } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { diaCalendario } from '../../../utils/fechas';
 import { es } from 'date-fns/locale';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -254,7 +255,7 @@ export default function TabGastos({ casoId }) {
                 </div>
                 <p className="text-sm font-medium text-gray-800 mt-1 truncate">{g.descripcion}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {format(parseISO(g.fecha), "d 'de' MMMM yyyy", { locale: es })}
+                  {format(diaCalendario(g.fecha), "d 'de' MMMM yyyy", { locale: es })}
                 </p>
               </div>
 
